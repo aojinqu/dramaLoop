@@ -723,6 +723,69 @@ git add frontend/package.json frontend/tsconfig.json frontend/vite.config.ts fro
 git commit -m "feat: scaffold dramaloop frontend demo shell"
 ```
 
+### Task 4 收口：补齐前端 lint 基线并完成任务归档
+
+**Files:**
+- Modify: `frontend/package.json`
+- Modify: `frontend/package-lock.json`
+- Modify: `frontend/eslint.config.js`
+- Modify: `.superpowers/sdd/task-4-report.md`
+- Modify: `.superpowers/sdd/progress.md`
+
+**Interfaces:**
+- Consumes:
+  - React + Vite + TypeScript 前端骨架
+  - `npm --prefix frontend run lint`
+- Produces:
+  - 支持 TS / TSX 的最小 ESLint 基线
+  - `react-hooks` / `jsx-a11y` lint 护栏
+  - 忽略 `dist/`、`node_modules/`、`*.d.ts`、`*.tsbuildinfo`
+  - Task 4 收口报告与 progress 记录
+
+- [ ] **Step 1: 先审视现有前端配置缺口，确认 lint 基线只做最小收口**
+
+检查当前：
+- `frontend/package.json`
+- `frontend/eslint.config.js`
+- `frontend/src/**/*.tsx`
+
+结论要求：
+- 仅补齐 TypeScript parser、`react-hooks`、基础 `jsx-a11y`
+- 不额外引入 Prettier、stylelint、type-aware lint 或更重工程化配置
+
+- [ ] **Step 2: 以最小改动补齐前端 lint 配置**
+
+要求：
+- `frontend/package.json` 至少具备 `lint` script 与对应 lint 依赖
+- `frontend/eslint.config.js` 支持 `ts` / `tsx`
+- 忽略：`dist/**`、`node_modules/**`、`**/*.d.ts`、`**/*.tsbuildinfo`
+- 保持前端当前单页骨架，不顺手扩展 Task 5 的 API / SSE 逻辑
+
+- [ ] **Step 3: 运行 Task 4 收口验证**
+
+Run:
+
+```bash
+npm --prefix frontend install
+npm --prefix frontend run lint
+npm --prefix frontend test -- --run
+npm --prefix frontend run build
+```
+
+Expected: 全部 PASS。
+
+- [ ] **Step 4: 更新 Task 4 报告并执行 task-scoped review**
+
+要求：
+- 更新 `.superpowers/sdd/task-4-report.md`，记录 lint 收口内容、验证命令与结果
+- 对 Task 4 收口 diff 做 review，确认无 Critical / Important 问题残留
+
+- [ ] **Step 5: review clean 后记录 progress 并提交 Task 4 收口 commit**
+
+要求：
+- 在 `.superpowers/sdd/progress.md` 追加 Task 4 完成记录
+- 提交一个仅覆盖 Task 4 收口的 commit
+
 ### Task 5: 接通 API 与 SSE，渲染实时状态、故事结果，并补充运行文档
 
 **Files:**
