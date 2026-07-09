@@ -25,6 +25,35 @@ cp .env.example .env
 uv run dramaloop run --input examples/inputs/revenge_story.yaml
 ```
 
+## Web Demo
+
+### 本地开发
+
+后端：
+```bash
+uv run dramaloop web --reload --host 127.0.0.1 --port 8000
+```
+
+前端：
+```bash
+npm --prefix frontend install
+npm --prefix frontend run dev
+```
+
+### 构建并由 FastAPI 托管前端
+
+```bash
+npm --prefix frontend run build
+uv run dramaloop web --host 127.0.0.1 --port 8000
+```
+
+### 体验路径
+
+1. 在左侧输入 `idea`
+2. 点击 `Launch Run`
+3. 观察右上角的 stage timeline 与 event stream
+4. run 完成后，在右下查看 final story、overall score、rewrite focus 与 artifacts
+
 ## API 配置文档
 
 如果你准备接真实模型，先看：

@@ -1,7 +1,8 @@
-from datetime import datetime
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 
 from dramaloop.config import Settings
 from dramaloop.web.runtime import hydrate_run_detail, launch_run, stream_run_events
@@ -39,6 +40,15 @@ def create_app() -> FastAPI:
         if hydrated is None:
             raise HTTPException(status_code=404, detail="run not found")
         return StreamingResponse(stream_run_events(run_id, settings, store), media_type="text/event-stream")
+
+    dist_dir = Path(__file__).resolve().parents[3] / "frontend" / "dist"
+    assets_dir = dist_dir / "assets"
+    if assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+        @app.get("/", include_in_schema=False)
+        def index() -> FileResponse:
+            return FileResponse(dist_dir / "index.html")
 
     app.state.run_store = store
     return app

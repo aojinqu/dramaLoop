@@ -5,6 +5,25 @@ export interface WebStageSnapshot {
   status: StageStatus;
 }
 
+export interface RunFormInput {
+  idea: string;
+  style: string[];
+  audience: string;
+  constraints: string[];
+  max_iterations: number;
+}
+
+export interface WebRunCreated {
+  run_id: string;
+  status: "running";
+  stream_url: string;
+}
+
+export interface StreamMessage {
+  event: string;
+  data: Record<string, unknown>;
+}
+
 export interface WebRunDetail {
   run_id: string;
   status: "running" | "completed" | "failed";

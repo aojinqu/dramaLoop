@@ -1,4 +1,6 @@
-const stages = [
+import type { WebRunDetail } from "../types";
+
+const fallbackStages = [
   "premise_refinement",
   "character_card_generation",
   "story_outline_generation",
@@ -8,23 +10,36 @@ const stages = [
   "final_assembly",
 ];
 
-export function RunTimeline() {
+type RunTimelineProps = {
+  detail: WebRunDetail | null;
+  streamState: "idle" | "streaming" | "reconnecting" | "failed";
+};
+
+export function RunTimeline({ detail, streamState }: RunTimelineProps) {
+  const stages = detail?.stages ?? fallbackStages.map((name) => ({ name, status: "pending" as const }));
+
   return (
     <section className="panel timeline-panel">
       <div className="panel-header">
-        <p className="eyebrow">Runtime</p>
-        <h2>Stage Timeline</h2>
+        <div>
+          <p className="eyebrow">Runtime</p>
+          <h2>Stage Timeline</h2>
+        </div>
+        <p>{streamState === "idle" ? "Ready to start" : streamState}</p>
       </div>
       <ul className="timeline-list">
-        {stages.map((stage, index) => (
-          <li key={stage} className={index === 0 ? "timeline-item active" : "timeline-item"}>
-            <span className="timeline-dot" />
-            <div>
-              <strong>{stage}</strong>
-              <p>{index === 0 ? "Ready to start" : "Pending"}</p>
-            </div>
-          </li>
-        ))}
+        {stages.map((stage) => {
+          const className = stage.status === "running" ? "timeline-item active" : "timeline-item";
+          return (
+            <li key={stage.name} className={className}>
+              <span className="timeline-dot" />
+              <div>
+                <strong>{stage.name}</strong>
+                <p>{stage.status}</p>
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );
