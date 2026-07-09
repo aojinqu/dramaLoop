@@ -6,6 +6,9 @@ import reactHooks from "eslint-plugin-react-hooks";
 const browserGlobals = {
   document: "readonly",
   Event: "readonly",
+  EventSource: "readonly",
+  fetch: "readonly",
+  MessageEvent: "readonly",
   navigator: "readonly",
   window: "readonly",
 };
@@ -42,6 +45,7 @@ export default [
       "react-hooks": reactHooks,
     },
     rules: {
+      "no-unused-vars": "off",
       ...reactHooks.configs.recommended.rules,
       "jsx-a11y/control-has-associated-label": "warn",
       "jsx-a11y/label-has-associated-control": [
