@@ -18,3 +18,8 @@ ai-plugin-lock.json
 runs/
 artifacts/
 specs/doc_export/
+frontend/node_modules/
+frontend/dist/
+frontend/*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts
