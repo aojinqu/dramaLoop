@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as api from "../api";
 import App from "../App";
@@ -9,6 +9,10 @@ vi.mock("../api", () => ({
   fetchRunDetail: vi.fn(),
   connectRunStream: vi.fn(),
 }));
+
+afterEach(() => {
+  vi.clearAllMocks();
+});
 
 test("renders the Task 4 single-page shell contract", () => {
   render(<App />);
@@ -109,4 +113,55 @@ test("does not show placeholder story while a real run is still running", async 
 
   expect(screen.queryByText(/婚礼进行到交换戒指的那一刻/)).not.toBeInTheDocument();
   expect(screen.queryByText("ending_payoff")).not.toBeInTheDocument();
+});
+
+test("keeps the timeline header out of streaming after a completed run closes the stream", async () => {
+  const createRun = vi.mocked(api.createRun);
+  const fetchRunDetail = vi.mocked(api.fetchRunDetail);
+  const connectRunStream = vi.mocked(api.connectRunStream);
+
+  createRun.mockResolvedValue({
+    run_id: "20260709-complete-story",
+    status: "running",
+    stream_url: "/api/runs/20260709-complete-story/stream",
+  });
+
+  fetchRunDetail.mockResolvedValue({
+    run_id: "20260709-complete-story",
+    status: "completed",
+    request: {
+      idea: "她在婚礼上反杀前任",
+      style: ["都市情感"],
+      audience: "女性向短剧用户",
+      constraints: ["节奏快"],
+      max_iterations: 2,
+      length: "short",
+    },
+    stages: [{ name: "premise_refinement", status: "completed" }],
+    current_stage: null,
+    final_story: "最终成稿",
+    overall_score: 8.1,
+    rewrite_focus: "ending_payoff",
+    available_artifacts: ["final_story.md"],
+  });
+
+  connectRunStream.mockImplementation((_runId, handlers) => {
+    handlers.onMessage({ event: "run_completed", data: { run_id: "20260709-complete-story" } });
+    handlers.onError();
+    return { close() {} } as EventSource;
+  });
+
+  render(<App />);
+
+  await userEvent.type(screen.getByLabelText(/idea/i), "她在婚礼上反杀前任");
+  await userEvent.click(screen.getByRole("button", { name: /launch run/i }));
+
+  const timelineSection = screen.getByRole("heading", { name: /stage timeline/i, level: 2 }).closest("section");
+  expect(timelineSection).not.toBeNull();
+
+  await waitFor(() => {
+    expect(within(timelineSection!).getByText(/ready to start/i)).toBeInTheDocument();
+  });
+
+  expect(within(timelineSection!).queryByText(/^streaming$/i)).not.toBeInTheDocument();
 });

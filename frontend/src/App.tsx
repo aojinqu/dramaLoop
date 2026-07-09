@@ -109,7 +109,13 @@ export default function App() {
         try {
           const nextDetail = await fetchRunDetail(created.run_id);
           setDetail(nextDetail);
-          setStreamState(nextDetail.status === "failed" ? "failed" : "streaming");
+          if (nextDetail.status === "completed") {
+            setStreamState("idle");
+          } else if (nextDetail.status === "failed") {
+            setStreamState("failed");
+          } else {
+            setStreamState("streaming");
+          }
         } catch {
           setStreamState("failed");
         }
