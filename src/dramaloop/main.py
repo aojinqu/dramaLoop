@@ -84,3 +84,20 @@ def eval_command(
     if dataset is None:
         raise typer.BadParameter("Provide --run or --dataset")
     typer.echo(_format_dataset_report(run_dataset_eval(dataset, settings)))
+
+
+@app.command()
+def web(
+    host: str = typer.Option(default="127.0.0.1"),
+    port: int = typer.Option(default=8000),
+    reload: bool = typer.Option(default=False),
+) -> None:
+    import uvicorn
+
+    uvicorn.run(
+        "dramaloop.web.app:create_app",
+        host=host,
+        port=port,
+        reload=reload,
+        factory=True,
+    )
