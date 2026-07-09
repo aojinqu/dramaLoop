@@ -3,7 +3,7 @@ from datetime import datetime
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
-import dramaloop.web.app as web_app_module
+import dramaloop.web.runtime as web_runtime_module
 from dramaloop.web.app import create_app
 from dramaloop.web.schemas import WebRunDetail
 
@@ -77,7 +77,7 @@ def test_create_run_uses_unique_ids_within_same_second(monkeypatch) -> None:
         def now(cls) -> datetime:
             return fixed_now
 
-    monkeypatch.setattr(web_app_module, "datetime", FixedDateTime)
+    monkeypatch.setattr(web_runtime_module, "datetime", FixedDateTime)
     client = TestClient(create_app())
 
     first = client.post(
@@ -102,3 +102,46 @@ def test_create_run_uses_unique_ids_within_same_second(monkeypatch) -> None:
     assert first.status_code == 202
     assert second.status_code == 202
     assert first.json()["run_id"] != second.json()["run_id"]
+
+
+
+def test_create_run_returns_store_assigned_run_id_when_background_is_not_running(tmp_path, monkeypatch) -> None:
+    fixed_now = datetime(2026, 7, 9, 12, 34, 56)
+
+    class FixedDateTime(datetime):
+        @classmethod
+        def now(cls) -> datetime:
+            return fixed_now
+
+    def fake_create_task(coro):
+        coro.close()
+        return None
+
+    monkeypatch.setenv("DRAMALOOP_RUNS_DIR", str(tmp_path / "runs"))
+    monkeypatch.setattr(web_runtime_module, "datetime", FixedDateTime)
+    monkeypatch.setattr(web_runtime_module.asyncio, "create_task", fake_create_task)
+    client = TestClient(create_app())
+
+    first = client.post(
+        "/api/runs",
+        json={
+            "idea": "被退婚后她逆袭",
+            "style": ["都市情感"],
+            "constraints": [],
+            "max_iterations": 2,
+        },
+    )
+    second = client.post(
+        "/api/runs",
+        json={
+            "idea": "被退婚后她逆袭",
+            "style": ["都市情感"],
+            "constraints": [],
+            "max_iterations": 2,
+        },
+    )
+
+    assert first.status_code == 202
+    assert second.status_code == 202
+    assert first.json()["run_id"] == "20260709-123456-story"
+    assert second.json()["run_id"] == "20260709-123456-story-2"
