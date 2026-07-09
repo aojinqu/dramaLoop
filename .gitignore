@@ -15,6 +15,7 @@ ai-plugin-lock.json
 .superpowers/
 
 # Local outputs and scratch space
+.worktrees/
 runs/
 artifacts/
 specs/doc_export/
