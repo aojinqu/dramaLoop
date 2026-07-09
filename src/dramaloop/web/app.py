@@ -2,7 +2,7 @@ from datetime import datetime
 
 from fastapi import FastAPI, HTTPException
 
-from dramaloop.web.schemas import WebRunCreateRequest, WebRunCreated
+from dramaloop.web.schemas import WebRunCreateRequest, WebRunCreated, WebRunDetail
 from dramaloop.web.store import WebRunStore
 
 
@@ -25,8 +25,8 @@ def create_app() -> FastAPI:
             stream_url=f"/api/runs/{detail.run_id}/stream",
         )
 
-    @app.get("/api/runs/{run_id}")
-    def get_run(run_id: str):
+    @app.get("/api/runs/{run_id}", response_model=WebRunDetail)
+    def get_run(run_id: str) -> WebRunDetail:
         detail = store.get(run_id)
         if detail is None:
             raise HTTPException(status_code=404, detail="run not found")

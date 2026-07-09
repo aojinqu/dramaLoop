@@ -1,6 +1,7 @@
 from threading import Lock
 
-from dramaloop.web.schemas import WebRunCreateRequest, WebRunDetail, WebStageSnapshot
+from dramaloop.schemas.input import StoryRequest
+from dramaloop.web.schemas import WebRunDetail, WebStageSnapshot
 
 
 DEFAULT_STAGE_NAMES = [
@@ -19,7 +20,7 @@ class WebRunStore:
         self._runs: dict[str, WebRunDetail] = {}
         self._lock = Lock()
 
-    def create(self, run_id: str, request: WebRunCreateRequest) -> WebRunDetail:
+    def create(self, run_id: str, request: StoryRequest) -> WebRunDetail:
         with self._lock:
             unique_run_id = run_id
             suffix = 2

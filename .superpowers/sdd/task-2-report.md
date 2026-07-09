@@ -63,3 +63,19 @@
 - 未扩展到真实 pipeline、SSE、后台任务或前端。
 - `stream_url` 按 brief 原样返回，但当前任务未实现对应 stream 路由；这与 brief 的“仅 skeleton、不扩展 SSE”范围一致，因此保持为占位契约，不额外外溢实现。
 - 已补一次代码审查复核，最终无 material issues。
+
+## Fix 附录（Task 2 review follow-up）
+- 修复 1：`/Users/bytedance/coderepo/brainWrite/src/dramaloop/web/schemas.py` 中的 `WebRunCreateRequest` 改为复用 `/Users/bytedance/coderepo/brainWrite/src/dramaloop/schemas/input.py` 的 `StoryRequest`，并把 `length` 默认钉为 `"short"`，使 Web run 请求与 brief 指定契约保持一致。
+- 修复 2：`/Users/bytedance/coderepo/brainWrite/src/dramaloop/web/app.py` 中的 `GET /api/runs/{run_id}` 显式声明 `response_model=WebRunDetail`，同时补充返回类型标注。
+- 配套调整：`/Users/bytedance/coderepo/brainWrite/src/dramaloop/web/store.py` 的 `create()` 入参同步改为 `StoryRequest`；`/Users/bytedance/coderepo/brainWrite/tests/unit/test_web_runs_api.py` 增加定向测试，覆盖默认 `length="short"` 和详情路由显式 `response_model`。
+
+### Fix 验证命令与结果
+1. 定向测试
+   - 命令：`uv run pytest tests/unit/test_web_runs_api.py -v`
+   - 结果：PASS，`3 passed, 1 warning`
+   - 覆盖点：创建/详情回归、默认 `length="short"`、详情路由显式 `response_model=WebRunDetail`、同秒唯一 `run_id`。
+
+2. 相关回归测试
+   - 命令：`uv run pytest tests/unit/test_web_app.py tests/unit/test_web_runs_api.py -v`
+   - 结果：PASS，`5 passed, 1 warning`
+   - warning：仍为 `fastapi.testclient` / `starlette` 第三方依赖弃用提示，非本次 fix 引入。
