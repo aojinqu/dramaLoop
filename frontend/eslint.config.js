@@ -1,15 +1,33 @@
 import js from "@eslint/js";
+import tsParser from "@typescript-eslint/parser";
 import jsxA11y from "eslint-plugin-jsx-a11y";
 import reactHooks from "eslint-plugin-react-hooks";
 
+const browserGlobals = {
+  document: "readonly",
+  Event: "readonly",
+  navigator: "readonly",
+  window: "readonly",
+};
+
+const testGlobals = {
+  afterEach: "readonly",
+  beforeEach: "readonly",
+  describe: "readonly",
+  expect: "readonly",
+  test: "readonly",
+  vi: "readonly",
+};
+
 export default [
   {
-    ignores: ["dist/**", "node_modules/**"],
+    ignores: ["dist/**", "node_modules/**", "**/*.d.ts", "**/*.tsbuildinfo"],
   },
   js.configs.recommended,
   {
     files: ["**/*.{ts,tsx,js,jsx}"],
     languageOptions: {
+      parser: tsParser,
       ecmaVersion: "latest",
       sourceType: "module",
       parserOptions: {
@@ -17,16 +35,11 @@ export default [
           jsx: true,
         },
       },
-      globals: {
-        document: "readonly",
-        window: "readonly",
-        navigator: "readonly",
-        Event: "readonly",
-      },
+      globals: browserGlobals,
     },
     plugins: {
-      "react-hooks": reactHooks,
       "jsx-a11y": jsxA11y,
+      "react-hooks": reactHooks,
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
@@ -43,8 +56,8 @@ export default [
     files: ["src/__tests__/**/*.{ts,tsx,js,jsx}", "src/test/**/*.{ts,tsx,js,jsx}"],
     languageOptions: {
       globals: {
-        test: "readonly",
-        expect: "readonly",
+        ...browserGlobals,
+        ...testGlobals,
       },
     },
   },

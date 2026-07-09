@@ -21,15 +21,15 @@ export function RunForm({ onSubmit }: RunFormProps) {
       </label>
       <label className="field">
         <span>Style tags</span>
-        <input name="style" placeholder="都市情感, 逆袭, 狗血短剧感" />
+        <input aria-label="Style tags" name="style" placeholder="都市情感, 逆袭, 狗血短剧感" />
       </label>
       <label className="field">
         <span>Audience</span>
-        <input name="audience" placeholder="女性向短剧用户" />
+        <input aria-label="Audience" name="audience" placeholder="女性向短剧用户" />
       </label>
       <label className="field">
         <span>Constraints</span>
-        <input name="constraints" placeholder="节奏快, 结尾有回报" />
+        <input aria-label="Constraints" name="constraints" placeholder="节奏快, 结尾有回报" />
       </label>
       <button type="submit">Launch Run</button>
     </form>
