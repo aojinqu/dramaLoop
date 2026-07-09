@@ -35,7 +35,15 @@ class WebRunStore:
                 stages=[WebStageSnapshot(name=name, status="pending") for name in DEFAULT_STAGE_NAMES],
             )
             self._runs[unique_run_id] = detail
-            return detail
+            return detail.model_copy(deep=True)
 
     def get(self, run_id: str) -> WebRunDetail | None:
-        return self._runs.get(run_id)
+        with self._lock:
+            detail = self._runs.get(run_id)
+            return detail.model_copy(deep=True) if detail is not None else None
+
+    def replace(self, detail: WebRunDetail) -> WebRunDetail:
+        with self._lock:
+            stored = detail.model_copy(deep=True)
+            self._runs[detail.run_id] = stored
+            return stored.model_copy(deep=True)
