@@ -1,0 +1,15 @@
+{
+  "dimension_scores": {
+    "hook_strength": {"score": 6, "reason": "ok", "evidence": "a", "improvement_advice": "x"},
+    "character_consistency": {"score": 7, "reason": "ok", "evidence": "b", "improvement_advice": "x"},
+    "conflict_intensity": {"score": 6, "reason": "ok", "evidence": "c", "improvement_advice": "x"},
+    "pacing": {"score": 5, "reason": "ok", "evidence": "d", "improvement_advice": "x"},
+    "short_drama_feel": {"score": 6, "reason": "ok", "evidence": "e", "improvement_advice": "x"},
+    "ending_payoff": {"score": 5, "reason": "ok", "evidence": "f", "improvement_advice": "x"},
+    "language_fluency": {"score": 7, "reason": "ok", "evidence": "g", "improvement_advice": "x"}
+  },
+  "overall_score": 6.0,
+  "weakest_dimensions": ["ending_payoff", "pacing"],
+  "rewrite_target": "ending_payoff",
+  "rewrite_plan": {"scope": "ending", "must_fix": ["pay off"], "keep": ["hook"]}
+}

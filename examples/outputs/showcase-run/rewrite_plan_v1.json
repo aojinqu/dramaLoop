@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "target_section": "ending_payoff",
+  "goals": [
+    "增加终局反杀",
+    "补强公开羞辱的回报感"
+  ],
+  "changes_made": [
+    "增加终局反杀",
+    "补强公开羞辱的回报感"
+  ],
+  "expected_score_improvement": [
+    "ending_payoff",
+    "hook_strength"
+  ]
+}

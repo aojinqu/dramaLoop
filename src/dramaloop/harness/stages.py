@@ -1,0 +1,81 @@
+from dramaloop.llm.base import LLMClient
+from dramaloop.prompts.characters import build_character_prompt
+from dramaloop.prompts.critique import build_critique_prompt
+from dramaloop.prompts.draft import build_draft_prompt
+from dramaloop.prompts.outline import build_outline_prompt
+from dramaloop.prompts.premise import build_premise_prompt
+from dramaloop.prompts.rewrite import build_rewrite_prompt
+from dramaloop.schemas.character import CharacterArtifact
+from dramaloop.schemas.critique import CritiqueArtifact
+from dramaloop.schemas.input import StoryRequest
+from dramaloop.schemas.outline import OutlineArtifact
+from dramaloop.schemas.premise import PremiseArtifact
+from dramaloop.schemas.rewrite import RewriteArtifact
+
+
+def run_premise_stage(client: LLMClient, request: StoryRequest) -> PremiseArtifact:
+    return client.generate_structured(
+        role="premise_refinement",
+        prompt=build_premise_prompt(request),
+        response_model=PremiseArtifact,
+    )
+
+
+def run_character_stage(client: LLMClient, premise: PremiseArtifact) -> CharacterArtifact:
+    return client.generate_structured(
+        role="character_card_generation",
+        prompt=build_character_prompt(premise),
+        response_model=CharacterArtifact,
+    )
+
+
+def run_outline_stage(client: LLMClient, premise: PremiseArtifact, characters: CharacterArtifact) -> OutlineArtifact:
+    return client.generate_structured(
+        role="story_outline_generation",
+        prompt=build_outline_prompt(premise, characters),
+        response_model=OutlineArtifact,
+    )
+
+
+def run_draft_stage(client: LLMClient, premise: PremiseArtifact, characters: CharacterArtifact, outline: OutlineArtifact) -> str:
+    return client.generate_text(
+        role="draft_generation",
+        prompt=build_draft_prompt(premise, characters, outline),
+    )
+
+
+def run_critique_stage(
+    client: LLMClient,
+    draft_markdown: str,
+    premise: PremiseArtifact,
+    characters: CharacterArtifact,
+    outline: OutlineArtifact,
+) -> CritiqueArtifact:
+    return client.generate_structured(
+        role="critique_scoring",
+        prompt=build_critique_prompt(draft_markdown, premise, characters, outline),
+        response_model=CritiqueArtifact,
+    )
+
+
+def run_rewrite_stage(
+    client: LLMClient,
+    draft_markdown: str,
+    critique: CritiqueArtifact,
+    premise: PremiseArtifact,
+    characters: CharacterArtifact,
+    outline: OutlineArtifact,
+    next_version: int,
+) -> tuple[RewriteArtifact, str]:
+    revised_draft = client.generate_text(
+        role="targeted_rewrite",
+        prompt=build_rewrite_prompt(draft_markdown, critique, premise, characters, outline),
+    )
+    rewrite_artifact = RewriteArtifact(
+        version=next_version - 1,
+        target_section=critique.rewrite_target,
+        goals=critique.rewrite_plan.must_fix,
+        changes_made=critique.rewrite_plan.must_fix,
+        expected_score_improvement=critique.weakest_dimensions,
+    )
+    return rewrite_artifact, revised_draft

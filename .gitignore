@@ -1,0 +1,20 @@
+.env
+.env.*
+.venv/
+.pytest_cache/
+__pycache__/
+*.pyc
+.DS_Store
+
+# Local AI/dev tool configs that should not be published
+.claude/
+.ttadk/
+.mcp.json
+ai-plugin.json
+ai-plugin-lock.json
+.superpowers/
+
+# Local outputs and scratch space
+runs/
+artifacts/
+specs/doc_export/
