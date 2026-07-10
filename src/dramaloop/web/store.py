@@ -4,7 +4,7 @@ from dramaloop.schemas.input import StoryRequest
 from dramaloop.web.schemas import WebRunDetail, WebStageSnapshot
 
 
-DEFAULT_STAGE_NAMES = [
+SINGLE_STAGE_NAMES = [
     "premise_refinement",
     "character_card_generation",
     "story_outline_generation",
@@ -13,6 +13,19 @@ DEFAULT_STAGE_NAMES = [
     "targeted_rewrite",
     "final_assembly",
 ]
+
+EPISODIC_STAGE_NAMES = [
+    "season_planning",
+    "episode_plan_generation",
+    "episode_generation",
+    "final_assembly",
+]
+
+
+def stage_names_for_request(request: StoryRequest) -> list[str]:
+    if request.format == "episodic_series":
+        return EPISODIC_STAGE_NAMES
+    return SINGLE_STAGE_NAMES
 
 
 class WebRunStore:
@@ -32,7 +45,7 @@ class WebRunStore:
                 run_id=unique_run_id,
                 status="running",
                 request=request,
-                stages=[WebStageSnapshot(name=name, status="pending") for name in DEFAULT_STAGE_NAMES],
+                stages=[WebStageSnapshot(name=name, status="pending") for name in stage_names_for_request(request)],
             )
             self._runs[unique_run_id] = detail
             return detail.model_copy(deep=True)

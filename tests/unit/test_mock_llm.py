@@ -1,6 +1,7 @@
 from dramaloop.llm.mock import MockLLMClient, build_default_mock_client
 from dramaloop.schemas.critique import CritiqueArtifact
 from dramaloop.schemas.premise import PremiseArtifact
+from dramaloop.schemas.season import EpisodePlanArtifact, SeasonBible
 
 
 def test_mock_client_returns_validated_structured_model() -> None:
@@ -51,3 +52,21 @@ def test_default_mock_client_advances_structured_sequences() -> None:
     assert first.overall_score < second.overall_score
     assert first.rewrite_target == "ending_payoff"
     assert second.rewrite_target == "opening_hook"
+
+
+def test_default_mock_client_supports_episodic_structured_roles() -> None:
+    client = build_default_mock_client()
+
+    season = client.generate_structured(
+        role="season_planning",
+        prompt="season",
+        response_model=SeasonBible,
+    )
+    plan = client.generate_structured(
+        role="episode_plan_generation",
+        prompt="plan",
+        response_model=EpisodePlanArtifact,
+    )
+
+    assert season.target_episode_count == 12
+    assert len(plan.episodes) == 12

@@ -8,12 +8,9 @@ import type { RunFormInput, StreamMessage, WebRunDetail, WebStageSnapshot } from
 import "./app.css";
 
 const defaultStages: WebStageSnapshot[] = [
-  { name: "premise_refinement", status: "pending" },
-  { name: "character_card_generation", status: "pending" },
-  { name: "story_outline_generation", status: "pending" },
-  { name: "draft_generation", status: "pending" },
-  { name: "critique_scoring", status: "pending" },
-  { name: "targeted_rewrite", status: "pending" },
+  { name: "season_planning", status: "pending" },
+  { name: "episode_plan_generation", status: "pending" },
+  { name: "episode_generation", status: "pending" },
   { name: "final_assembly", status: "pending" },
 ];
 
@@ -44,9 +41,13 @@ export default function App() {
       run_id: created.run_id,
       status: "running",
       current_stage: null,
+      current_episode_number: 1,
+      completed_episode_count: 0,
+      episodes: [],
       final_story: null,
       overall_score: null,
       rewrite_focus: null,
+      season_summary: null,
       available_artifacts: [],
       stages: defaultStages,
       request: {
@@ -56,8 +57,22 @@ export default function App() {
         constraints: input.constraints,
         max_iterations: input.max_iterations,
         length: "short",
+        format: input.format,
+        episode_count: input.episode_count,
+        episode_min_words: input.episode_min_words,
+        episode_max_words: input.episode_max_words,
+        delivery_mode: input.delivery_mode,
       },
     });
+
+    const refreshDetail = async () => {
+      try {
+        const nextDetail = await fetchRunDetail(created.run_id);
+        setDetail(nextDetail);
+      } catch {
+        // ignore transient refresh failures during streaming
+      }
+    };
 
     const source = connectRunStream(created.run_id, {
       onMessage: async (message) => {
@@ -69,21 +84,21 @@ export default function App() {
           }
 
           const stageName = typeof message.data.stage === "string" ? message.data.stage : null;
-          if (message.event === "stage_started" && stageName) {
+          if ((message.event === "stage_started" || message.event === "season_started" || message.event === "episode_started" || message.event === "final_assembly_started") && stageName) {
             return {
               ...current,
               current_stage: stageName,
               stages: updateStageSnapshots(current.stages, stageName, "running"),
             };
           }
-          if (message.event === "stage_completed" && stageName) {
+          if ((message.event === "stage_completed" || message.event === "season_completed" || message.event === "episode_completed" || message.event === "final_assembly_completed" || message.event === "episode_plan_ready") && stageName) {
             return {
               ...current,
               current_stage: stageName,
               stages: updateStageSnapshots(current.stages, stageName, "completed"),
             };
           }
-          if (message.event === "artifact_ready") {
+          if (message.event === "artifact_ready" || message.event === "episode_artifact_ready") {
             const artifact = typeof message.data.artifact === "string" ? message.data.artifact : null;
             if (!artifact || current.available_artifacts.includes(artifact)) {
               return current;
@@ -95,6 +110,10 @@ export default function App() {
           }
           return current;
         });
+
+        if (message.event === "episode_completed" || message.event === "episode_artifact_ready" || message.event === "episode_plan_ready") {
+          await refreshDetail();
+        }
 
         if (message.event === "run_completed" || message.event === "run_failed") {
           const nextDetail = await fetchRunDetail(created.run_id);
@@ -131,9 +150,7 @@ export default function App() {
         <div className="hero-block">
           <p className="eyebrow">Dramaloop Demo</p>
           <h1>Dramaloop Web Demo</h1>
-          <p className="hero-copy">
-            在同一界面中观察 staged harness 的运行过程，并预览最终中文短剧故事成稿。
-          </p>
+          <p className="hero-copy">在同一界面中观察 staged harness 的运行过程，并预览分集短剧与最终合并版成稿。</p>
         </div>
         <RunForm onSubmit={handleLaunch} />
       </aside>

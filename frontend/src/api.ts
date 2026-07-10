@@ -34,7 +34,21 @@ export function connectRunStream(
   },
 ): EventSource {
   const source = new EventSource(`/api/runs/${runId}/stream`);
-  const eventNames = ["stage_started", "stage_completed", "artifact_ready", "run_completed", "run_failed"];
+  const eventNames = [
+    "stage_started",
+    "stage_completed",
+    "artifact_ready",
+    "season_started",
+    "season_completed",
+    "episode_plan_ready",
+    "episode_started",
+    "episode_completed",
+    "episode_artifact_ready",
+    "final_assembly_started",
+    "final_assembly_completed",
+    "run_completed",
+    "run_failed",
+  ];
 
   eventNames.forEach((eventName) => {
     source.addEventListener(eventName, (event) => {

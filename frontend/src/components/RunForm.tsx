@@ -28,6 +28,11 @@ export function RunForm({ onSubmit }: RunFormProps) {
             .map((value) => value.trim())
             .filter(Boolean),
           max_iterations: 2,
+          format: "episodic_series",
+          episode_count: 12,
+          episode_min_words: 500,
+          episode_max_words: 800,
+          delivery_mode: "stream_and_final",
         });
       }}
     >
