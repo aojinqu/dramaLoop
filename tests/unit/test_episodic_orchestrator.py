@@ -1,22 +1,73 @@
+import json
 from pathlib import Path
+
+import pytest
 
 from dramaloop.config import Settings
 from dramaloop.harness.episodic_orchestrator import run_episodic_pipeline
-from dramaloop.llm.mock import build_default_mock_client
+from dramaloop.llm.mock import MockLLMClient, build_default_mock_client
 from dramaloop.schemas.input import StoryRequest
+
+
+def _episodic_request(*, episode_count: int = 12) -> StoryRequest:
+    return StoryRequest(
+        idea="她被退婚后反手嫁给宿敌",
+        style=["都市情感"],
+        length="short",
+        format="episodic_series",
+        episode_count=episode_count,
+    )
+
+
+def _episodic_client(
+    *,
+    episode_drafts: list[str],
+    episode_plan: list[dict[str, object]] | None = None,
+) -> MockLLMClient:
+    return MockLLMClient(
+        structured_outputs={
+            "season_planning": {
+                "title_candidate": "退婚后我反嫁宿敌",
+                "series_logline": "她在婚礼当天被抛弃后，反手嫁给宿敌，用12集完成反杀。",
+                "core_conflict": "女主要在前任与家族的双重羞辱中拿回尊严和主动权。",
+                "target_episode_count": 12,
+                "final_payoff": "前任公开失势，女主赢回名声与感情主动权。",
+                "main_character_arcs": ["林晚从受辱者变成设局者"],
+                "must_land_beats": ["婚礼羞辱", "闪婚联盟", "公开反杀"],
+            },
+            "episode_plan_generation": {
+                "episodes": episode_plan
+                or [
+                    {
+                        "episode_number": 1,
+                        "title": "婚礼反击",
+                        "opening_situation": "婚礼现场，新郎带旧爱现身。",
+                        "core_conflict": "女主必须马上止损反击。",
+                        "must_happen": ["当众受辱", "提出改嫁"],
+                        "hook_ending": "顾承骁说他知道偷拍视频是谁放的。",
+                        "sets_up_next": "下一集进入危险闪婚。",
+                    },
+                    {
+                        "episode_number": 2,
+                        "title": "危险闪婚",
+                        "opening_situation": "顾承骁公开接住女主抛出的婚约。",
+                        "core_conflict": "女主必须决定要不要借势反击。",
+                        "must_happen": ["闪婚协议", "前任破防"],
+                        "hook_ending": "顾承骁拿出了偷拍视频原件。",
+                        "sets_up_next": "下一集追查幕后黑手。",
+                    },
+                ]
+            },
+        },
+        text_outputs={"episode_draft_generation": episode_drafts},
+    )
 
 
 def test_run_episodic_pipeline_writes_episode_files_and_final_story(tmp_path: Path) -> None:
     settings = Settings(runs_dir=tmp_path / "runs", provider="mock")
     client = build_default_mock_client()
-    request = StoryRequest(
-        idea="她被退婚后反手嫁给宿敌",
-        style=["都市情感"],
-        length="short",
-        format="episodic_series",
-    )
 
-    result = run_episodic_pipeline(request, settings, client)
+    result = run_episodic_pipeline(_episodic_request(episode_count=1), settings, client)
 
     run_dir = result.run_dir
     assert (run_dir / "season_bible.json").exists()
@@ -30,15 +81,109 @@ def test_run_episodic_pipeline_writes_episode_files_and_final_story(tmp_path: Pa
 def test_run_episodic_pipeline_updates_manifest_episode_progress(tmp_path: Path) -> None:
     settings = Settings(runs_dir=tmp_path / "runs", provider="mock")
     client = build_default_mock_client()
-    request = StoryRequest(
-        idea="她被退婚后反手嫁给宿敌",
-        style=["都市情感"],
-        length="short",
-        format="episodic_series",
-    )
 
-    result = run_episodic_pipeline(request, settings, client)
+    result = run_episodic_pipeline(_episodic_request(), settings, client)
     manifest = (result.run_dir / "run_manifest.json").read_text(encoding="utf-8")
 
     assert '"format": "episodic_series"' in manifest
     assert '"completed_episodes": 12' in manifest
+
+
+def test_run_episodic_pipeline_fails_when_episode_plan_does_not_cover_requested_range(tmp_path: Path) -> None:
+    settings = Settings(runs_dir=tmp_path / "runs", provider="mock")
+    client = _episodic_client(
+        episode_drafts=[
+            "第1集正文。婚礼现场，新郎带旧爱现身时，林晚当众提出改嫁，顾承骁替她扛下满场羞辱。",
+        ],
+        episode_plan=[
+            {
+                "episode_number": 1,
+                "title": "婚礼反击",
+                "opening_situation": "婚礼现场，新郎带旧爱现身。",
+                "core_conflict": "女主必须马上止损反击。",
+                "must_happen": ["当众受辱", "提出改嫁"],
+                "hook_ending": "顾承骁说他知道偷拍视频是谁放的。",
+                "sets_up_next": "下一集进入危险闪婚。",
+            }
+        ],
+    )
+
+    with pytest.raises(RuntimeError, match="Episode plan does not cover requested range 1-2"):
+        run_episodic_pipeline(_episodic_request(episode_count=2), settings, client)
+
+    run_dir = next((tmp_path / "runs").iterdir())
+    manifest = json.loads((run_dir / "run_manifest.json").read_text(encoding="utf-8"))
+
+    assert manifest["status"] == "failed"
+    assert manifest["completed_episodes"] == 0
+    assert not (run_dir / "final_story.md").exists()
+    settings = Settings(runs_dir=tmp_path / "runs", provider="mock")
+    client = _episodic_client(
+        episode_drafts=[
+            "第1集正文。婚礼现场，新郎带旧爱现身时，林晚当众提出改嫁，顾承骁替她扛下满场羞辱。等宾客散去，他贴近她耳边低声说：‘顾承骁说他知道偷拍视频是谁放的。’",
+            "第2集正文。故事刚开始，林晚又回到婚礼现场，像第一次认识所有人那样重新讲起自己的遭遇，仿佛前一集什么都没发生。",
+            "第2集正文。顾承骁说他知道偷拍视频是谁放的后，直接把林晚带上车避开媒体。林晚没有再回头看婚礼现场，而是顺着这条线索答应先签下闪婚协议，再借顾承骁的势把羞辱还回去。陆闻舟追出来破防失态，反而让她更确定这次合作值得冒险。车门合上前，顾承骁把新的证物袋推到她手里，低声说里面装着偷拍视频原件。",
+        ]
+    )
+
+    result = run_episodic_pipeline(_episodic_request(episode_count=2), settings, client)
+    episode_two = json.loads((result.run_dir / "episodes" / "episode_02.json").read_text(encoding="utf-8"))
+    continuity = json.loads((result.run_dir / "continuity_state.json").read_text(encoding="utf-8"))
+    events = (result.run_dir / "events.jsonl").read_text(encoding="utf-8")
+
+    assert "顾承骁说他知道偷拍视频是谁放的后" in episode_two["markdown"]
+    assert continuity["last_episode_hook"] == "车门合上前，顾承骁把新的证物袋推到她手里，低声说里面装着偷拍视频原件。"
+    assert episode_two["hook_delivered"] == continuity["last_episode_hook"]
+    assert "episode=2;attempt=1" in events
+    assert "episode=2;attempt=2" in events
+
+
+def test_episode_summary_is_richer_than_core_conflict_template(tmp_path: Path) -> None:
+    settings = Settings(runs_dir=tmp_path / "runs", provider="mock")
+    client = build_default_mock_client()
+
+    result = run_episodic_pipeline(_episodic_request(episode_count=2), settings, client)
+    episode_one = json.loads((result.run_dir / "episodes" / "episode_01.json").read_text(encoding="utf-8"))
+
+    assert episode_one["episode_summary"] != "第1集：女主必须马上止损反击。"
+    assert "《婚礼反击》" in episode_one["episode_summary"]
+    assert "婚礼现场，新郎带旧爱现身" in episode_one["episode_summary"]
+    assert "实际收尾" in episode_one["episode_summary"]
+
+
+def test_repeated_continuity_failure_aborts_before_final_story(tmp_path: Path) -> None:
+    settings = Settings(runs_dir=tmp_path / "runs", provider="mock")
+    client = _episodic_client(
+        episode_drafts=[
+            "第1集正文。婚礼现场，新郎带旧爱现身时，林晚当众提出改嫁，顾承骁替她扛下满场羞辱。散场时，他贴近她耳边低声说：‘顾承骁说他知道偷拍视频是谁放的。’",
+            "第2集正文。故事刚开始，林晚重新站回婚礼门口，像第一集一样介绍所有恩怨，还说这一切都结束了。",
+            "第2集正文。故事刚开始，林晚又回到婚礼当天，把前面的羞辱重新讲了一遍，还像大结局一样说从此以后所有风波都结束了。",
+        ]
+    )
+
+    with pytest.raises(RuntimeError, match="Episode 2 failed continuity gate"):
+        run_episodic_pipeline(_episodic_request(episode_count=2), settings, client)
+
+    run_dir = next((tmp_path / "runs").iterdir())
+    manifest = json.loads((run_dir / "run_manifest.json").read_text(encoding="utf-8"))
+
+    assert manifest["status"] == "failed"
+    assert manifest["completed_episodes"] == 1
+    assert "continuity gate" in manifest["error_message"]
+    assert not (run_dir / "final_story.md").exists()
+    assert manifest.get("final_artifact") is None
+
+
+def test_requested_final_episode_can_end_cleanly(tmp_path: Path) -> None:
+    settings = Settings(runs_dir=tmp_path / "runs", provider="mock")
+    client = _episodic_client(
+        episode_drafts=[
+            "第1集正文。婚礼现场，新郎带旧爱现身时，林晚当众提出改嫁，顾承骁替她扛下满场羞辱。所有真相在当晚被公开，前任当场失势，她也终于把丢掉的尊严拿了回来。",
+        ]
+    )
+
+    result = run_episodic_pipeline(_episodic_request(episode_count=1), settings, client)
+    episode_one = json.loads((result.run_dir / "episodes" / "episode_01.json").read_text(encoding="utf-8"))
+
+    assert "终局回收" in episode_one["episode_summary"]
+    assert "把悬念推向下一集" not in episode_one["episode_summary"]

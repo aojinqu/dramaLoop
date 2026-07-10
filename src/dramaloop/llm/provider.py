@@ -40,6 +40,34 @@ class AnthropicCompatibleLLMClient(LLMClient):
             )
             normalized.setdefault("tone_notes", normalized.get("tone_notes") or normalized.get("tone") or [])
             normalized.setdefault("hard_constraints", normalized.get("hard_constraints") or normalized.get("constraints") or [])
+        if role == "season_planning":
+            normalized.setdefault("title_candidate", normalized.get("标题") or normalized.get("title") or normalized.get("片名"))
+            normalized.setdefault(
+                "series_logline",
+                normalized.get("剧情主线") or normalized.get("整季logline") or normalized.get("logline") or normalized.get("主线"),
+            )
+            normalized.setdefault("core_conflict", normalized.get("核心冲突") or normalized.get("主冲突"))
+            normalized.setdefault("target_episode_count", normalized.get("集数") or normalized.get("总集数") or normalized.get("episode_count"))
+            normalized.setdefault("final_payoff", normalized.get("终局回报") or normalized.get("结局回报") or normalized.get("payoff"))
+            normalized.setdefault("main_character_arcs", normalized.get("人物弧线") or normalized.get("角色弧线"))
+            normalized.setdefault("must_land_beats", normalized.get("关键节点") or normalized.get("必须回收节点") or normalized.get("关键回收点"))
+        if role == "episode_plan_generation":
+            episodes = normalized.get("episodes") or normalized.get("分集")
+            if isinstance(episodes, list):
+                normalized["episodes"] = [self._normalize_episode_plan_item(item) for item in episodes]
+        return normalized
+
+    def _normalize_episode_plan_item(self, item: Any) -> Any:
+        if not isinstance(item, dict):
+            return item
+        normalized = dict(item)
+        normalized.setdefault("episode_number", normalized.get("集数") or normalized.get("episode") or normalized.get("episode_no"))
+        normalized.setdefault("title", normalized.get("标题") or normalized.get("题目"))
+        normalized.setdefault("opening_situation", normalized.get("开场局面") or normalized.get("开场") or normalized.get("opening"))
+        normalized.setdefault("core_conflict", normalized.get("本集核心冲突") or normalized.get("核心冲突") or normalized.get("episode_conflict"))
+        normalized.setdefault("must_happen", normalized.get("本集必须发生") or normalized.get("必须发生") or normalized.get("beats"))
+        normalized.setdefault("hook_ending", normalized.get("本集结尾钩子") or normalized.get("结尾钩子") or normalized.get("hook"))
+        normalized.setdefault("sets_up_next", normalized.get("下一集铺垫") or normalized.get("铺垫下一集") or normalized.get("next_setup"))
         return normalized
 
     def generate_structured(self, *, role: str, prompt: str, response_model: type[TModel]) -> TModel:

@@ -4,6 +4,7 @@ from dramaloop.config import Settings
 from dramaloop.llm.base import LLMInvocationError
 from dramaloop.llm.provider import AnthropicCompatibleLLMClient, build_llm_client
 from dramaloop.schemas.premise import PremiseArtifact
+from dramaloop.schemas.season import EpisodePlanArtifact, SeasonBible
 
 
 def test_build_llm_client_returns_mock_for_mock_provider(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -55,3 +56,52 @@ def test_normalize_payload_maps_common_premise_aliases() -> None:
     assert artifact.title_candidate == "替嫁反击"
     assert artifact.hook_promise == "婚礼羞辱后立刻反击。"
     assert artifact.ending_payoff_plan == "公开反杀前任，完成逆袭。"
+
+
+def test_normalize_payload_maps_common_season_aliases() -> None:
+    client = AnthropicCompatibleLLMClient.__new__(AnthropicCompatibleLLMClient)
+
+    normalized = client._normalize_payload(
+        "season_planning",
+        {
+            "标题": "退婚后我反嫁宿敌",
+            "剧情主线": "她在婚礼当天被抛弃后，反手嫁给宿敌，用12集完成反杀。",
+            "核心冲突": "女主要在前任与家族的双重羞辱中拿回尊严和主动权。",
+            "集数": 12,
+            "终局回报": "前任公开失势，女主赢回名声与感情主动权。",
+            "人物弧线": ["林晚从受辱者变成设局者"],
+            "关键节点": ["婚礼羞辱", "闪婚联盟", "公开反杀"],
+        },
+    )
+
+    artifact = SeasonBible.model_validate(normalized)
+
+    assert artifact.title_candidate == "退婚后我反嫁宿敌"
+    assert artifact.target_episode_count == 12
+    assert artifact.must_land_beats == ["婚礼羞辱", "闪婚联盟", "公开反杀"]
+
+
+def test_normalize_payload_maps_common_episode_plan_aliases() -> None:
+    client = AnthropicCompatibleLLMClient.__new__(AnthropicCompatibleLLMClient)
+
+    normalized = client._normalize_payload(
+        "episode_plan_generation",
+        {
+            "分集": [
+                {
+                    "集数": 1,
+                    "标题": "婚礼反击",
+                    "开场局面": "婚礼现场，新郎带旧爱现身。",
+                    "本集核心冲突": "女主必须马上止损反击。",
+                    "本集必须发生": ["当众受辱", "提出改嫁"],
+                    "本集结尾钩子": "顾承骁说他知道偷拍视频是谁放的。",
+                    "下一集铺垫": "下一集进入危险闪婚。",
+                }
+            ]
+        },
+    )
+
+    artifact = EpisodePlanArtifact.model_validate(normalized)
+
+    assert artifact.episodes[0].episode_number == 1
+    assert artifact.episodes[0].hook_ending == "顾承骁说他知道偷拍视频是谁放的。"

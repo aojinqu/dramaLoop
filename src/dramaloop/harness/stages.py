@@ -73,6 +73,7 @@ def run_episode_draft_stage(
     previous_summary: str | None,
     min_words: int,
     max_words: int,
+    actual_total_episodes: int,
 ) -> str:
     return client.generate_text(
         role="episode_draft_generation",
@@ -83,6 +84,7 @@ def run_episode_draft_stage(
             previous_summary,
             min_words,
             max_words,
+            actual_total_episodes,
         ),
     )
 
