@@ -10,7 +10,7 @@ from dramaloop.llm.base import LLMClient
 from dramaloop.schemas.continuity import ContinuityState
 from dramaloop.schemas.input import StoryRequest
 from dramaloop.schemas.run import RunResult
-from dramaloop.schemas.season import EpisodeArtifact, EpisodePlanItem, SeasonBible
+from dramaloop.schemas.season import EpisodeArtifact, EpisodePlanArtifact, EpisodePlanItem, SeasonBible
 from dramaloop.storage.artifacts import write_json_artifact, write_markdown_artifact
 from dramaloop.storage.runs import build_run_id, create_run_paths, initialize_run_files, reserve_run_id
 
@@ -74,6 +74,13 @@ def _count_carryover_matches(text: str, fragments: list[str]) -> int:
 
 def _has_continuation_cue(text: str) -> bool:
     continuation_cues = (
+        "当晚",
+        "那晚",
+        "第二天",
+        "次日",
+        "此时",
+        "与此同时",
+        "同一时间",
         "之后",
         "以后",
         "随后",
@@ -150,13 +157,16 @@ def _detect_continuity_failures(
     return failures
 
 
-def _build_retry_continuity(continuity: ContinuityState, episode: EpisodePlanItem) -> ContinuityState:
+def _build_retry_continuity(continuity: ContinuityState, episode: EpisodePlanItem, failures: list[str]) -> ContinuityState:
+    failure_text = "；".join(failures)
     return continuity.model_copy(
         update={
             "story_so_far_summary": (
                 f"{continuity.story_so_far_summary}。重写要求：第{episode.episode_number}集必须直接承接上一集实际收尾信号"
                 f"“{continuity.last_episode_hook}”，禁止把故事重写成新开篇，禁止重复上一集正文，"
                 "非最终集禁止提前写成整季完结。"
+                f"上一次失败原因：{failure_text}。这一次开头前两句必须明确写出对上一集收尾的承接，"
+                "至少点出上一集收尾中的一个关键人物、动作、物件或结果。"
             )
         }
     )
@@ -191,6 +201,47 @@ def _validate_episode_plan_range(episodes: list[EpisodePlanItem], requested_epis
         raise RuntimeError(f"Episode plan does not cover requested range 1-{requested_episode_count}")
 
 
+def _collect_episode_plan_chunk(
+    episodes: list[EpisodePlanItem],
+    *,
+    start_episode: int,
+    end_episode: int,
+) -> list[EpisodePlanItem]:
+    selected = [episode for episode in episodes if start_episode <= episode.episode_number <= end_episode]
+    expected_numbers = list(range(start_episode, end_episode + 1))
+    actual_numbers = [episode.episode_number for episode in selected]
+    if actual_numbers != expected_numbers:
+        raise RuntimeError(f"Episode plan does not cover requested range {start_episode}-{end_episode}")
+    return selected
+
+
+def _build_episode_plan_in_chunks(
+    client: LLMClient,
+    season: SeasonBible,
+    requested_episode_count: int,
+    *,
+    chunk_size: int = 4,
+) -> list[EpisodePlanItem]:
+    collected: list[EpisodePlanItem] = []
+    for start_episode in range(1, requested_episode_count + 1, chunk_size):
+        end_episode = min(start_episode + chunk_size - 1, requested_episode_count)
+        chunk_artifact = run_episode_plan_stage(
+            client,
+            season,
+            start_episode=start_episode,
+            end_episode=end_episode,
+            prior_episodes=collected,
+        )
+        collected.extend(
+            _collect_episode_plan_chunk(
+                chunk_artifact.episodes,
+                start_episode=start_episode,
+                end_episode=end_episode,
+            )
+        )
+    return collected
+
+
 def run_episodic_pipeline(
     request: StoryRequest,
     settings: Settings,
@@ -214,7 +265,13 @@ def run_episodic_pipeline(
         write_json_artifact(run_paths.root / "season_bible.json", season)
         _record_stage_event(run_paths.events_path, "season_planning", "completed", artifact="season_bible.json")
 
-        episode_plan = run_episode_plan_stage(client, season)
+        episode_plan = EpisodePlanArtifact(
+            episodes=_build_episode_plan_in_chunks(
+                client,
+                season,
+                request.episode_count,
+            )
+        )
         write_json_artifact(run_paths.root / "episode_plan.json", episode_plan)
         _record_stage_event(run_paths.events_path, "episode_plan_generation", "completed", artifact="episode_plan.json")
         _validate_episode_plan_range(episode_plan.episodes, request.episode_count)
@@ -230,7 +287,7 @@ def run_episodic_pipeline(
 
             final_failures: list[str] = []
             markdown = ""
-            for attempt in range(2):
+            for attempt in range(3):
                 _record_stage_event(
                     run_paths.events_path,
                     "episode_generation",
@@ -238,7 +295,7 @@ def run_episodic_pipeline(
                     iteration=episode.episode_number,
                     detail=f"episode={episode.episode_number};attempt={attempt + 1}",
                 )
-                continuity_input = continuity if attempt == 0 else _build_retry_continuity(continuity, episode)
+                continuity_input = continuity if attempt == 0 else _build_retry_continuity(continuity, episode, final_failures)
                 previous_summary = continuity.story_so_far_summary if episode.episode_number > 1 else None
                 markdown = run_episode_draft_stage(
                     client,

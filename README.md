@@ -1,6 +1,6 @@
 # Dramaloop
 
-Dramaloop 是一个以 staged agent harness 和 critique-rewrite loop 为核心的短剧感短篇文本生成系统原型。
+Dramaloop 是一个以 staged agent harness 和 critique-rewrite loop 为核心的短剧生成系统原型，支持单篇短剧感短文和分集连续短剧。
 
 ## 为什么做这个项目
 
@@ -22,7 +22,17 @@ Dramaloop 是一个以 staged agent harness 和 critique-rewrite loop 为核心�
 ```bash
 uv sync --extra dev
 cp .env.example .env
-uv run dramaloop run --input examples/inputs/revenge_story.yaml
+uv run dramaloop run --input examples/inputs/minimal_story.yaml
+```
+
+直接从一段 prompt 生成分集短剧：
+
+```bash
+uv run dramaloop run \
+  --idea "一个普通人意外获得重来一次的机会，决定改写自己失败的人生" \
+  --style 都市情感 \
+  --format episodic_series \
+  --episode-count 12
 ```
 
 ## Web Demo
@@ -68,7 +78,8 @@ uv run dramaloop web --host 127.0.0.1 --port 8000
 ## 核心命令
 
 ```bash
-uv run dramaloop run --input examples/inputs/revenge_story.yaml
+uv run dramaloop run --input examples/inputs/minimal_story.yaml
+uv run dramaloop run --idea "她被退婚后反手嫁给宿敌" --style 都市情感 --format episodic_series --episode-count 12
 uv run dramaloop inspect runs/<run_id>
 uv run dramaloop eval --dataset evals/datasets/mvp_cases.yaml
 ```
@@ -77,9 +88,13 @@ uv run dramaloop eval --dataset evals/datasets/mvp_cases.yaml
 
 `input -> premise -> characters -> outline -> draft -> critique -> rewrite -> final`
 
+分集模式会切换为：
+
+`input -> season -> episode_plan -> episodes -> final`
+
 ## Run 输出
 
-每次 run 会写出：
+单篇模式会写出：
 - `request.json`
 - `run_manifest.json`
 - `events.jsonl`
@@ -91,5 +106,17 @@ uv run dramaloop eval --dataset evals/datasets/mvp_cases.yaml
 - `rewrite_plan_v1.json`
 - `draft_v2.md`
 - `critique_v2.json`
+- `final_story.md`
+- `run_summary.md`
+
+分集模式还会写出：
+- `season_bible.json`
+- `episode_plan.json`
+- `continuity_state.json`
+- `episodes/episode_01.md`
+- `episodes/episode_01.json`
+- `...`
+- `episodes/episode_12.md`
+- `episodes/episode_12.json`
 - `final_story.md`
 - `run_summary.md`

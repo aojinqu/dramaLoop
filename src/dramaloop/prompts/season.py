@@ -1,4 +1,5 @@
 from dramaloop.schemas.input import StoryRequest
+from dramaloop.prompts.structured_json import build_json_contract
 
 
 SEASON_JSON_SCHEMA = '''{
@@ -16,9 +17,15 @@ def build_season_prompt(request: StoryRequest) -> str:
     return "\n".join(
         [
             "你是中文短剧整季规划师。",
-            "Return valid JSON only. Do not wrap it in markdown fences. Use the exact field names below.",
-            "Required JSON schema:",
-            SEASON_JSON_SCHEMA,
+            *build_json_contract(
+                SEASON_JSON_SCHEMA,
+                extra_rules=[
+                    f"target_episode_count must equal {request.episode_count}.",
+                    "main_character_arcs must be an array with at least 1 item.",
+                    "must_land_beats must be an array with at least 3 concrete beats.",
+                    "All values should be concise Chinese text except the numeric episode count.",
+                ],
+            ),
             f"故事想法：{request.idea}",
             f"风格标签：{', '.join(request.style)}",
             f"受众：{request.audience or 'general'}",

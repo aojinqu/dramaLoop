@@ -49,6 +49,42 @@ def test_run_command_creates_required_artifacts(tmp_path: Path, monkeypatch) -> 
     assert (run_dir / "run_summary.md").exists()
 
 
+def test_run_command_supports_episodic_series(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("DRAMALOOP_PROVIDER", "mock")
+    monkeypatch.setenv("DRAMALOOP_RUNS_DIR", str(tmp_path / "runs"))
+    result = runner.invoke(
+        app,
+        [
+            "run",
+            "--idea",
+            "一个普通人意外获得重来一次的机会，决定改写自己失败的人生",
+            "--style",
+            "都市情感",
+            "--format",
+            "episodic_series",
+            "--episode-count",
+            "2",
+        ],
+    )
+
+    assert result.exit_code == 0
+    created_runs = list((tmp_path / "runs").iterdir())
+    assert len(created_runs) == 1
+    run_dir = created_runs[0]
+    assert (run_dir / "season_bible.json").exists()
+    assert (run_dir / "episode_plan.json").exists()
+    assert (run_dir / "continuity_state.json").exists()
+    assert (run_dir / "episodes" / "episode_01.md").exists()
+    assert (run_dir / "episodes" / "episode_02.md").exists()
+    assert (run_dir / "final_story.md").exists()
+    manifest = (run_dir / "run_manifest.json").read_text(encoding="utf-8")
+    assert '"format": "episodic_series"' in manifest
+    assert '"completed_episodes": 2' in manifest
+    assert "[episode 1] generating" in result.stdout
+    assert "[episode 2] completed" in result.stdout
+    assert "[final] completed -> final_story.md" in result.stdout
+
+
 def test_run_command_marks_manifest_failed_when_stage_raises(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("DRAMALOOP_PROVIDER", "mock")
     monkeypatch.setenv("DRAMALOOP_RUNS_DIR", str(tmp_path / "runs"))

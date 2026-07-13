@@ -19,6 +19,8 @@ def build_episode_draft_prompt(
                 "非第一集开篇必须直接承接上一集钩子或当前局面，写成连续剧情的串行续集。",
                 "不要把故事重写成第1集，不要重新介绍前提设定或像初次登场一样重置人物关系与冲突状态。",
                 "保持当前关系和冲突状态连续，推进本集计划事件，并在结尾落到本集钩子上。",
+                f"开头前两句必须明确承接上一集实际收尾信号“{continuity.last_episode_hook}”，至少要点出其中一个关键人物、动作、物件或冲突结果。",
+                "这种承接必须写进正文开头，不能只做抽象概述，也不能只在中段才补充。",
             ]
         )
     payoff_rule = (
@@ -46,6 +48,11 @@ def build_episode_draft_prompt(
             f"本集核心冲突：{episode.core_conflict}",
             f"本集必须发生：{must_happen}",
             f"本集计划结尾钩子：{episode.hook_ending}",
+            (
+                f"建议开头写法：承接“{continuity.last_episode_hook}”后，立刻进入“{episode.opening_situation}”。"
+                if episode.episode_number > 1
+                else f"建议开头写法：直接从“{episode.opening_situation}”切入冲突。"
+            ),
             *continuity_rules,
             payoff_rule,
             f"请输出连续中文正文，严格控制在{min_words}-{max_words}字。",

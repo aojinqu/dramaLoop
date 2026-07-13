@@ -50,10 +50,22 @@ def run_outline_stage(client: LLMClient, premise: PremiseArtifact, characters: C
     )
 
 
-def run_episode_plan_stage(client: LLMClient, season: SeasonBible) -> EpisodePlanArtifact:
+def run_episode_plan_stage(
+    client: LLMClient,
+    season: SeasonBible,
+    *,
+    start_episode: int = 1,
+    end_episode: int | None = None,
+    prior_episodes: list[EpisodePlanItem] | None = None,
+) -> EpisodePlanArtifact:
     return client.generate_structured(
         role="episode_plan_generation",
-        prompt=build_episode_plan_prompt(season),
+        prompt=build_episode_plan_prompt(
+            season,
+            start_episode=start_episode,
+            end_episode=end_episode,
+            prior_episodes=prior_episodes,
+        ),
         response_model=EpisodePlanArtifact,
     )
 

@@ -79,6 +79,8 @@ def test_season_prompt_mentions_twelve_episode_series() -> None:
 
     assert "12集" in prompt
     assert "500-800字" in prompt
+    assert "target_episode_count must equal 12." in prompt
+    assert "不要输出 markdown 代码块" in prompt
 
 
 def test_episode_plan_prompt_mentions_hook_and_payoff() -> None:
@@ -86,6 +88,21 @@ def test_episode_plan_prompt_mentions_hook_and_payoff() -> None:
 
     assert "每集都要有结尾钩子" in prompt
     assert "最终回收" in prompt
+    assert "只返回一个合法的 JSON object。" in prompt
+    assert "episodes 必须刚好包含 12 个条目。" in prompt
+
+
+def test_episode_plan_prompt_can_target_a_chunk_range() -> None:
+    prompt = build_episode_plan_prompt(
+        _season(),
+        start_episode=5,
+        end_episode=8,
+        prior_episodes=[_episode(), _later_episode()],
+    )
+
+    assert "本次只规划：第5-8集" in prompt
+    assert "episode_number 必须从 5 开始连续递增到 8。" in prompt
+    assert "上一段已规划到第2集《危险闪婚》" in prompt
 
 
 def test_episode_draft_prompt_contains_word_range_and_hook_requirement() -> None:
@@ -115,6 +132,8 @@ def test_episode_draft_prompt_requires_serialized_continuation_for_episode_two_p
     assert "重置人物关系与冲突状态" in prompt
     assert "推进本集计划事件，并在结尾落到本集钩子上" in prompt
     assert "上一集实际收尾信号" in prompt
+    assert "开头前两句必须明确承接上一集实际收尾信号" in prompt
+    assert "建议开头写法" in prompt
 
 
 def test_episode_draft_prompt_allows_full_payoff_only_in_requested_final_episode() -> None:

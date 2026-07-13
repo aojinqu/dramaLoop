@@ -1,6 +1,7 @@
 from dramaloop.schemas.character import CharacterArtifact
 from dramaloop.schemas.outline import OutlineArtifact
 from dramaloop.schemas.premise import PremiseArtifact
+from dramaloop.prompts.structured_json import build_json_contract
 
 
 CRITIQUE_JSON_SCHEMA = """{
@@ -62,15 +63,21 @@ CRITIQUE_JSON_SCHEMA = """{
 def build_critique_prompt(draft_markdown: str, premise: PremiseArtifact, characters: CharacterArtifact, outline: OutlineArtifact) -> str:
     return "\n".join(
         [
-            "You are the Critic for a short-drama fiction system.",
-            "Return valid JSON only. Do not wrap it in markdown fences. Use the exact field names below.",
-            "Required JSON schema:",
-            CRITIQUE_JSON_SCHEMA,
-            f"Logline: {premise.logline}",
-            f"Character count: {len(characters.characters)}",
-            f"Beat count: {len(outline.beats)}",
-            "Score the draft on hook_strength, character_consistency, conflict_intensity, pacing, short_drama_feel, ending_payoff, and language_fluency.",
-            "Return the weakest dimensions, a rewrite target, and a rewrite plan.",
+            "你是中文短剧文本审稿与打分助手。",
+            *build_json_contract(
+                CRITIQUE_JSON_SCHEMA,
+                extra_rules=[
+                    "dimension_scores 必须且只能包含这些 key：hook_strength、character_consistency、conflict_intensity、pacing、short_drama_feel、ending_payoff、language_fluency。",
+                    "每个 score 都必须是 1 到 10 的整数。",
+                    "weakest_dimensions 必须是已有维度 key 组成的数组。",
+                    "rewrite_plan.must_fix 和 rewrite_plan.keep 都必须是数组。",
+                ],
+            ),
+            f"一句话概括：{premise.logline}",
+            f"角色数量：{len(characters.characters)}",
+            f"大纲节拍数：{len(outline.beats)}",
+            "请对草稿在 hook_strength、character_consistency、conflict_intensity、pacing、short_drama_feel、ending_payoff、language_fluency 这些维度上进行打分。",
+            "同时输出 weakest_dimensions、rewrite_target 和 rewrite_plan。",
             draft_markdown,
         ]
     )

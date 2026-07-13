@@ -105,3 +105,72 @@ def test_normalize_payload_maps_common_episode_plan_aliases() -> None:
 
     assert artifact.episodes[0].episode_number == 1
     assert artifact.episodes[0].hook_ending == "顾承骁说他知道偷拍视频是谁放的。"
+
+
+def test_parse_structured_response_text_accepts_json_fence() -> None:
+    client = AnthropicCompatibleLLMClient.__new__(AnthropicCompatibleLLMClient)
+
+    payload = client._parse_structured_response_text(
+        """```json
+        {"episodes": [{"episode_number": 1, "title": "婚礼反击", "opening_situation": "婚礼现场", "core_conflict": "马上反击", "must_happen": ["提出改嫁"], "hook_ending": "他知道偷拍视频是谁放的", "sets_up_next": "进入下一集"}]}
+        ```"""
+    )
+
+    artifact = EpisodePlanArtifact.model_validate(payload)
+
+    assert artifact.episodes[0].episode_number == 1
+
+
+def test_parse_structured_response_text_accepts_prefixed_json() -> None:
+    client = AnthropicCompatibleLLMClient.__new__(AnthropicCompatibleLLMClient)
+
+    payload = client._parse_structured_response_text(
+        """好的，以下是分集规划：
+        {"episodes": [{"episode_number": 1, "title": "婚礼反击", "opening_situation": "婚礼现场", "core_conflict": "马上反击", "must_happen": ["提出改嫁"], "hook_ending": "他知道偷拍视频是谁放的", "sets_up_next": "进入下一集"}]}
+        """
+    )
+
+    artifact = EpisodePlanArtifact.model_validate(payload)
+
+    assert artifact.episodes[0].title == "婚礼反击"
+
+
+def test_generate_structured_retries_when_first_attempt_is_truncated() -> None:
+    class _FakeBlock:
+        def __init__(self, text: str) -> None:
+            self.type = "text"
+            self.text = text
+
+    class _FakeResponse:
+        def __init__(self, text: str, stop_reason: str | None = None) -> None:
+            self.content = [_FakeBlock(text)]
+            self.stop_reason = stop_reason
+
+    class _FakeMessages:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def create(self, **kwargs):
+            self.calls += 1
+            if self.calls == 1:
+                return _FakeResponse('{"episodes": [{"episode_number": 1, "title": "意外重来"', stop_reason="max_tokens")
+            return _FakeResponse(
+                '{"episodes": [{"episode_number": 1, "title": "意外重来", "opening_situation": "回到关键节点。", "core_conflict": "决定是否改命。", "must_happen": ["先验证重生", "试着改写错误"], "hook_ending": "他发现第一次改命带来代价。", "sets_up_next": "下一集进入第一次选择。"}]}'
+            )
+
+    class _FakeClient:
+        def __init__(self) -> None:
+            self.messages = _FakeMessages()
+
+    client = AnthropicCompatibleLLMClient.__new__(AnthropicCompatibleLLMClient)
+    client._client = _FakeClient()
+    client._model_name = "fake-model"
+
+    artifact = client.generate_structured(
+        role="episode_plan_generation",
+        prompt="生成分集规划",
+        response_model=EpisodePlanArtifact,
+    )
+
+    assert artifact.episodes[0].title == "意外重来"
+    assert client._client.messages.calls == 2

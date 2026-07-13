@@ -4,9 +4,10 @@ from pathlib import Path
 import pytest
 
 from dramaloop.config import Settings
-from dramaloop.harness.episodic_orchestrator import run_episodic_pipeline
+from dramaloop.harness.episodic_orchestrator import _build_episode_plan_in_chunks, run_episodic_pipeline
 from dramaloop.llm.mock import MockLLMClient, build_default_mock_client
 from dramaloop.schemas.input import StoryRequest
+from dramaloop.schemas.season import SeasonBible
 
 
 def _episodic_request(*, episode_count: int = 12) -> StoryRequest:
@@ -87,6 +88,21 @@ def test_run_episodic_pipeline_updates_manifest_episode_progress(tmp_path: Path)
 
     assert '"format": "episodic_series"' in manifest
     assert '"completed_episodes": 12' in manifest
+
+
+def test_build_episode_plan_in_chunks_collects_requested_ranges_from_full_plan() -> None:
+    client = build_default_mock_client()
+    season = client.generate_structured(
+        role="season_planning",
+        prompt="season",
+        response_model=SeasonBible,
+    )
+
+    episodes = _build_episode_plan_in_chunks(client, season, 12, chunk_size=4)
+
+    assert [episode.episode_number for episode in episodes] == list(range(1, 13))
+    assert episodes[0].title == "婚礼反击"
+    assert episodes[-1].title == "公开反杀"
 
 
 def test_run_episodic_pipeline_fails_when_episode_plan_does_not_cover_requested_range(tmp_path: Path) -> None:
