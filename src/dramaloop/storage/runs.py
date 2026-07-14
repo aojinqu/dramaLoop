@@ -28,14 +28,21 @@ def reserve_run_id(runs_dir: Path, run_id: str) -> str:
     return candidate
 
 
+def plan_run_id(runs_dir: Path, idea: str, started_at: datetime) -> str:
+    return reserve_run_id(runs_dir, build_run_id(idea, started_at))
+
+
 def create_run_paths(runs_dir: Path, run_id: str) -> RunPaths:
     root = runs_dir / run_id
     root.mkdir(parents=True, exist_ok=False)
+    episodes_dir = root / "episodes"
+    episodes_dir.mkdir(parents=True, exist_ok=False)
     return RunPaths(
         root=root,
         request_path=root / "request.json",
         manifest_path=root / "run_manifest.json",
         events_path=root / "events.jsonl",
+        episodes_dir=episodes_dir,
     )
 
 

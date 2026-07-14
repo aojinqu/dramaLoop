@@ -7,13 +7,17 @@ from pydantic import BaseModel
 
 class RunManifest(BaseModel):
     run_id: str
-    status: Literal["running", "completed", "failed"]
+    status: Literal["running", "paused", "completed", "failed", "cancelled"]
     started_at: str
     finished_at: str | None = None
     model_provider: str
     model_name: str
+    format: Literal["single_story", "episodic_series"] = "single_story"
     max_iterations: int
     completed_iterations: int = 0
+    total_episodes: int | None = None
+    completed_episodes: int = 0
+    current_episode: int | None = None
     target_threshold: float
     minimum_dimension_threshold: int
     min_delta: float
@@ -36,6 +40,7 @@ class RunPaths:
     request_path: Path
     manifest_path: Path
     events_path: Path
+    episodes_dir: Path
 
 
 class RunResult(BaseModel):

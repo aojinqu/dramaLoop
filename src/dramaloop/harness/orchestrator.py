@@ -55,10 +55,17 @@ def _record_stage_event(
     )
 
 
-def run_story_pipeline(request: StoryRequest, settings: Settings, client: LLMClient, started_at: datetime | None = None) -> RunResult:
+def run_story_pipeline(
+    request: StoryRequest,
+    settings: Settings,
+    client: LLMClient,
+    started_at: datetime | None = None,
+    run_id: str | None = None,
+) -> RunResult:
     started_at = started_at or datetime.now()
-    base_run_id = build_run_id(request.idea, started_at)
-    run_id = reserve_run_id(settings.runs_dir, base_run_id)
+    if run_id is None:
+        base_run_id = build_run_id(request.idea, started_at)
+        run_id = reserve_run_id(settings.runs_dir, base_run_id)
     run_paths = create_run_paths(settings.runs_dir, run_id)
     manifest = build_running_manifest(run_id, settings, request, started_at)
     initialize_run_files(run_paths, request, manifest)

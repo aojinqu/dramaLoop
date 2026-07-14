@@ -1,4 +1,5 @@
 from dramaloop.schemas.premise import PremiseArtifact
+from dramaloop.prompts.structured_json import build_json_contract
 
 
 CHARACTER_JSON_SCHEMA = """{
@@ -21,13 +22,18 @@ CHARACTER_JSON_SCHEMA = """{
 def build_character_prompt(premise: PremiseArtifact) -> str:
     return "\n".join(
         [
-            "You are the Character Designer for a short-drama fiction system.",
-            "Return valid JSON only. Do not wrap it in markdown fences. Use the exact field names below.",
-            "Required JSON schema:",
-            CHARACTER_JSON_SCHEMA,
-            f"Title candidate: {premise.title_candidate}",
-            f"Logline: {premise.logline}",
-            f"Core conflict: {premise.core_conflict}",
-            "Create character cards that maximize conflict, voice contrast, and payoff potential.",
+            "你是中文短剧角色设计师。",
+            *build_json_contract(
+                CHARACTER_JSON_SCHEMA,
+                extra_rules=[
+                    "characters 必须是非空数组。",
+                    "role 字段保留英文标识，例如 protagonist、antagonist、ally、supporting。",
+                    "hidden_secret 可以是字符串或 null，但该字段必须始终存在。",
+                ],
+            ),
+            f"标题候选：{premise.title_candidate}",
+            f"一句话概括：{premise.logline}",
+            f"核心冲突：{premise.core_conflict}",
+            "请设计能最大化冲突、人物反差和后续回报空间的角色卡。",
         ]
     )

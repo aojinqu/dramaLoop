@@ -18,6 +18,11 @@ def test_story_request_applies_defaults() -> None:
     assert request.max_iterations == 2
     assert request.constraints == []
     assert request.audience is None
+    assert request.format == "single_story"
+    assert request.episode_count == 12
+    assert request.episode_min_words == 500
+    assert request.episode_max_words == 800
+    assert request.delivery_mode == "stream_and_final"
 
 
 def test_story_request_rejects_long_form_length() -> None:

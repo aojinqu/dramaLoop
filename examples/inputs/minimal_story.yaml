@@ -2,3 +2,7 @@ idea: 一个普通人意外获得重来一次的机会，决定改写自己失�
 style:
   - 都市情感
 length: short
+format: episodic_series
+episode_count: 12
+episode_min_words: 500
+episode_max_words: 800

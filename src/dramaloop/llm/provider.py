@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from typing import Any
 
 from anthropic import Anthropic
@@ -40,21 +41,118 @@ class AnthropicCompatibleLLMClient(LLMClient):
             )
             normalized.setdefault("tone_notes", normalized.get("tone_notes") or normalized.get("tone") or [])
             normalized.setdefault("hard_constraints", normalized.get("hard_constraints") or normalized.get("constraints") or [])
+        if role == "season_planning":
+            normalized.setdefault("title_candidate", normalized.get("标题") or normalized.get("title") or normalized.get("片名"))
+            normalized.setdefault(
+                "series_logline",
+                normalized.get("剧情主线") or normalized.get("整季logline") or normalized.get("logline") or normalized.get("主线"),
+            )
+            normalized.setdefault("core_conflict", normalized.get("核心冲突") or normalized.get("主冲突"))
+            normalized.setdefault("target_episode_count", normalized.get("集数") or normalized.get("总集数") or normalized.get("episode_count"))
+            normalized.setdefault("final_payoff", normalized.get("终局回报") or normalized.get("结局回报") or normalized.get("payoff"))
+            normalized.setdefault("main_character_arcs", normalized.get("人物弧线") or normalized.get("角色弧线"))
+            normalized.setdefault("must_land_beats", normalized.get("关键节点") or normalized.get("必须回收节点") or normalized.get("关键回收点"))
+        if role == "episode_plan_generation":
+            episodes = normalized.get("episodes") or normalized.get("分集")
+            if isinstance(episodes, list):
+                normalized["episodes"] = [self._normalize_episode_plan_item(item) for item in episodes]
         return normalized
 
+    def _normalize_episode_plan_item(self, item: Any) -> Any:
+        if not isinstance(item, dict):
+            return item
+        normalized = dict(item)
+        normalized.setdefault("episode_number", normalized.get("集数") or normalized.get("episode") or normalized.get("episode_no"))
+        normalized.setdefault("title", normalized.get("标题") or normalized.get("题目"))
+        normalized.setdefault("opening_situation", normalized.get("开场局面") or normalized.get("开场") or normalized.get("opening"))
+        normalized.setdefault("core_conflict", normalized.get("本集核心冲突") or normalized.get("核心冲突") or normalized.get("episode_conflict"))
+        normalized.setdefault("must_happen", normalized.get("本集必须发生") or normalized.get("必须发生") or normalized.get("beats"))
+        normalized.setdefault("hook_ending", normalized.get("本集结尾钩子") or normalized.get("结尾钩子") or normalized.get("hook"))
+        normalized.setdefault("sets_up_next", normalized.get("下一集铺垫") or normalized.get("铺垫下一集") or normalized.get("next_setup"))
+        return normalized
+
+    def _structured_max_tokens(self, role: str) -> int:
+        if role == "episode_plan_generation":
+            return 6000
+        if role in {"critique_scoring", "episode_critique_scoring"}:
+            return 3000
+        return 2000
+
+    def _parse_structured_response_text(self, text: str) -> Any:
+        content = text.strip()
+        if not content:
+            raise LLMInvocationError("Structured response was empty")
+
+        parse_candidates = [content]
+
+        fenced_match = re.search(r"```(?:json)?\s*(.*?)\s*```", content, flags=re.DOTALL | re.IGNORECASE)
+        if fenced_match:
+            parse_candidates.append(fenced_match.group(1).strip())
+
+        decoder = json.JSONDecoder()
+        first_json_start = min((index for index in (content.find("{"), content.find("[")) if index != -1), default=-1)
+        if first_json_start != -1:
+            parse_candidates.append(content[first_json_start:].strip())
+
+        seen: set[str] = set()
+        for candidate in parse_candidates:
+            normalized_candidate = candidate.strip()
+            if not normalized_candidate or normalized_candidate in seen:
+                continue
+            seen.add(normalized_candidate)
+            try:
+                return json.loads(normalized_candidate)
+            except json.JSONDecodeError:
+                try:
+                    payload, _ = decoder.raw_decode(normalized_candidate)
+                    return payload
+                except json.JSONDecodeError:
+                    continue
+
+        snippet = content[:200].replace("\n", "\\n")
+        raise LLMInvocationError(f"Structured response was not valid JSON: {snippet}")
+
     def generate_structured(self, *, role: str, prompt: str, response_model: type[TModel]) -> TModel:
-        response = self._client.messages.create(
-            model=self._model_name,
-            max_tokens=2000,
-            temperature=0.7,
-            system=f"You are the {role} stage in a structured short-drama generation system. Return valid JSON only.",
-            messages=[{"role": "user", "content": prompt}],
-        )
-        text = "".join(block.text for block in response.content if getattr(block, "type", None) == "text")
-        try:
-            payload = json.loads(text)
-        except json.JSONDecodeError as exc:
-            raise LLMInvocationError(f"Structured response for role={role} was not valid JSON") from exc
+        max_tokens = self._structured_max_tokens(role)
+        attempts = [
+            {
+                "max_tokens": max_tokens,
+                "temperature": 0.4,
+                "system": f"你是短剧生成系统中的 {role} 阶段。你必须只返回合法 JSON，不能输出任何 JSON 之外的内容。",
+                "prompt": prompt,
+            },
+            {
+                "max_tokens": max(max_tokens, 8000),
+                "temperature": 0.2,
+                "system": f"你是短剧生成系统中的 {role} 阶段。你上一次的结果未能被解析。你这一次必须只返回完整、闭合、合法的 JSON。",
+                "prompt": prompt + "\n\n补充要求：如果上一次输出被截断，这一次请压缩措辞，但必须保证 JSON 完整闭合。",
+            },
+        ]
+
+        last_error: LLMInvocationError | None = None
+        payload: Any = None
+        for attempt in attempts:
+            response = self._client.messages.create(
+                model=self._model_name,
+                max_tokens=attempt["max_tokens"],
+                temperature=attempt["temperature"],
+                system=attempt["system"],
+                messages=[{"role": "user", "content": attempt["prompt"]}],
+            )
+            text = "".join(block.text for block in response.content if getattr(block, "type", None) == "text")
+            try:
+                payload = self._parse_structured_response_text(text)
+                break
+            except LLMInvocationError as exc:
+                stop_reason = getattr(response, "stop_reason", None)
+                detail = f"{exc}"
+                if stop_reason == "max_tokens":
+                    detail = f"模型输出被 max_tokens 截断。{detail}"
+                last_error = LLMInvocationError(f"Structured response for role={role} was not valid JSON. {detail}")
+        else:
+            assert last_error is not None
+            raise last_error
+
         if isinstance(payload, dict):
             payload = self._normalize_payload(role, payload)
         return response_model.model_validate(payload)
