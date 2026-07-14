@@ -74,7 +74,7 @@ class AnthropicCompatibleLLMClient(LLMClient):
     def _structured_max_tokens(self, role: str) -> int:
         if role == "episode_plan_generation":
             return 6000
-        if role == "critique_scoring":
+        if role in {"critique_scoring", "episode_critique_scoring"}:
             return 3000
         return 2000
 

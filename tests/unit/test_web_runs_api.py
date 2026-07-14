@@ -5,8 +5,17 @@ from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
 import dramaloop.web.runtime as web_runtime_module
+from dramaloop.harness.control import CONTROLLERS
 from dramaloop.web.app import create_app
 from dramaloop.web.schemas import WebRunDetail
+
+
+def setup_function() -> None:
+    CONTROLLERS.clear()
+
+
+def teardown_function() -> None:
+    CONTROLLERS.clear()
 
 
 def test_create_run_returns_run_id_and_detail_snapshot(monkeypatch) -> None:
@@ -252,10 +261,68 @@ def test_get_run_hydrates_completed_status_from_manifest(tmp_path, monkeypatch) 
                 "episode_summary": "婚礼现场反手改嫁。",
                 "hook_delivered": "顾承骁说他知道偷拍视频是谁放的。",
                 "qa_passed": True,
+                "overall_score": 5.5,
+                "rewrite_applied": True,
             },
             ensure_ascii=False,
         )
         + "\n",
+        encoding="utf-8",
+    )
+    (run_dir / "episodes" / "episode_01_critique.json").write_text(
+        json.dumps(
+            {
+                "episode_number": 1,
+                "overall_score": 5.5,
+                "dimension_scores": {
+                    "hook_strength": 5.0,
+                    "conflict_intensity": 6.0,
+                    "pacing": 5.5,
+                    "short_drama_feel": 6.0,
+                    "carryover": 8.0,
+                },
+                "weakest_dimensions": ["hook_strength"],
+                "rewrite_needed": True,
+                "rewrite_target": "强化集末钩子。",
+                "issues": ["钩子偏软"],
+            },
+            ensure_ascii=False,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (run_dir / "season_bible.json").write_text(
+        json.dumps(
+            {
+                "title_candidate": "婚礼反击",
+                "series_logline": "退婚后的反击短剧",
+                "core_conflict": "被退婚后的反击",
+                "target_episode_count": 12,
+                "final_payoff": "女主完成逆袭",
+                "main_character_arcs": ["从隐忍到反击"],
+                "must_land_beats": ["婚礼反转"],
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    (run_dir / "episode_plan.json").write_text(
+        json.dumps(
+            {
+                "episodes": [
+                    {
+                        "episode_number": 1,
+                        "title": "婚礼反击",
+                        "opening_situation": "婚礼现场",
+                        "core_conflict": "当众退婚",
+                        "must_happen": ["退婚发生"],
+                        "hook_ending": "新势力介入",
+                        "sets_up_next": "下一集冲突",
+                    }
+                ]
+            },
+            ensure_ascii=False,
+        ),
         encoding="utf-8",
     )
 
@@ -268,6 +335,10 @@ def test_get_run_hydrates_completed_status_from_manifest(tmp_path, monkeypatch) 
     assert payload["completed_episode_count"] == 1
     assert payload["episodes"][0]["title"] == "婚礼反击"
     assert payload["episodes"][0]["content"] == "第1集正文"
+    assert payload["episodes"][0]["overall_score"] == 5.5
+    assert payload["overall_score"] == 5.5
+    assert payload["season_bible"]["title_candidate"] == "婚礼反击"
+    assert payload["episode_plan"]["episodes"][0]["title"] == "婚礼反击"
 
 
 def test_get_run_404s_for_unknown_run(monkeypatch) -> None:

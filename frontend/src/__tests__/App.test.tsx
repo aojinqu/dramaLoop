@@ -17,25 +17,25 @@ afterEach(() => {
 test("renders the episodic single-page shell contract", () => {
   render(<App />);
 
-  expect(screen.getByRole("heading", { name: /dramaloop web demo/i })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: /短剧生成工作台/i })).toBeInTheDocument();
   expect(screen.getByLabelText(/idea/i)).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: /launch run/i })).toBeInTheDocument();
-  expect(screen.getByText(/stage timeline/i)).toBeInTheDocument();
-  expect(screen.getByText(/event stream/i)).toBeInTheDocument();
-  expect(screen.getByText(/final story/i)).toBeInTheDocument();
-  expect(screen.getByRole("heading", { name: /merged story/i, level: 3 })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /开始生成/i })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: /阶段进度/i })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: /实时进度/i })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: /生成结果/i })).toBeInTheDocument();
+  expect(screen.getByRole("tab", { name: /合并成稿/i })).toBeInTheDocument();
   expect(screen.getByRole("heading", { name: /artifacts/i, level: 3 })).toBeInTheDocument();
 
-  const timelineSection = screen.getByRole("heading", { name: /stage timeline/i, level: 2 }).closest("section");
+  const timelineSection = screen.getByRole("heading", { name: /阶段进度/i, level: 2 }).closest("section");
   expect(timelineSection).not.toBeNull();
-  expect(timelineSection).toHaveTextContent("premise_refinement");
-  expect(timelineSection).toHaveTextContent("final_assembly");
+  expect(timelineSection).toHaveTextContent("整季规划");
+  expect(timelineSection).toHaveTextContent("最终合并");
 });
 
 test("submitting the launch form does not trigger native navigation", () => {
   render(<RunForm onSubmit={() => {}} />);
 
-  const form = screen.getByRole("button", { name: /launch run/i }).closest("form");
+  const form = screen.getByRole("button", { name: /开始生成/i }).closest("form");
   expect(form).not.toBeNull();
 
   const submitEvent = fireEvent.submit(form!);
@@ -88,6 +88,14 @@ test("launches an episodic run and renders merged result", async () => {
     overall_score: null,
     rewrite_focus: null,
     season_summary: "12 集短剧规划完成",
+    season_bible: {
+      title_candidate: "婚礼反击",
+      series_logline: "12 集短剧规划完成",
+      core_conflict: "退婚后的反击",
+    },
+    episode_plan: {
+      episodes: [{ episode_number: 1, title: "婚礼反击", core_conflict: "当众退婚" }],
+    },
     available_artifacts: ["episodes/episode_01.md", "final_story.md"],
   });
 
@@ -99,14 +107,17 @@ test("launches an episodic run and renders merged result", async () => {
 
   render(<App />);
 
+  await userEvent.clear(screen.getByLabelText(/idea/i));
   await userEvent.type(screen.getByLabelText(/idea/i), "被未婚夫当众退婚后，她转身嫁给了他的死对头");
-  await userEvent.click(screen.getByRole("button", { name: /launch run/i }));
+  await userEvent.click(screen.getByRole("button", { name: /开始生成/i }));
 
   await waitFor(() => {
     expect(screen.getByText(/已完成 12 \/ 12 集/)).toBeInTheDocument();
-    expect(screen.getByText(/第1集 · 婚礼反击/)).toBeInTheDocument();
-    expect(screen.getAllByText(/第1集正文/).length).toBeGreaterThan(0);
   });
+
+  await userEvent.click(screen.getByRole("tab", { name: /分集正文/i }));
+  expect(screen.getByText(/第1集 · 婚礼反击/)).toBeInTheDocument();
+  expect(screen.getByText(/第1集正文/)).toBeInTheDocument();
 });
 
 test("does not show placeholder story while a real run is still running", async () => {
@@ -123,13 +134,16 @@ test("does not show placeholder story while a real run is still running", async 
 
   render(<App />);
 
+  await userEvent.clear(screen.getByLabelText(/idea/i));
   await userEvent.type(screen.getByLabelText(/idea/i), "女主复仇短剧设定");
-  await userEvent.click(screen.getByRole("button", { name: /launch run/i }));
+  await userEvent.click(screen.getByRole("button", { name: /开始生成/i }));
 
   await waitFor(() => {
-    expect(screen.getByText(/waiting for episode output/i)).toBeInTheDocument();
+    expect(screen.getByText(/20260709-running-story/)).toBeInTheDocument();
   });
 
+  await userEvent.click(screen.getByRole("tab", { name: /分集正文/i }));
+  expect(screen.getByText(/正在等待分集正文/)).toBeInTheDocument();
   expect(screen.queryByText(/婚礼进行到交换戒指的那一刻/)).not.toBeInTheDocument();
 });
 
@@ -180,15 +194,16 @@ test("keeps the timeline header out of streaming after a completed run closes th
 
   render(<App />);
 
+  await userEvent.clear(screen.getByLabelText(/idea/i));
   await userEvent.type(screen.getByLabelText(/idea/i), "她在婚礼上反杀前任");
-  await userEvent.click(screen.getByRole("button", { name: /launch run/i }));
+  await userEvent.click(screen.getByRole("button", { name: /开始生成/i }));
 
-  const timelineSection = screen.getByRole("heading", { name: /stage timeline/i, level: 2 }).closest("section");
+  const timelineSection = screen.getByRole("heading", { name: /阶段进度/i, level: 2 }).closest("section");
   expect(timelineSection).not.toBeNull();
 
   await waitFor(() => {
-    expect(within(timelineSection!).getByText(/ready to start/i)).toBeInTheDocument();
+    expect(within(timelineSection!).getByText(/就绪/i)).toBeInTheDocument();
   });
 
-  expect(within(timelineSection!).queryByText(/^streaming$/i)).not.toBeInTheDocument();
+  expect(within(timelineSection!).queryByText(/^生成中$/i)).not.toBeInTheDocument();
 });

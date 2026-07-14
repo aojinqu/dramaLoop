@@ -2,6 +2,10 @@ from dramaloop.llm.base import LLMClient
 from dramaloop.prompts.characters import build_character_prompt
 from dramaloop.prompts.critique import build_critique_prompt
 from dramaloop.prompts.draft import build_draft_prompt
+from dramaloop.prompts.episode_critique import (
+    build_episode_critique_prompt,
+    build_episode_rewrite_prompt,
+)
 from dramaloop.prompts.episode_draft import build_episode_draft_prompt
 from dramaloop.prompts.episode_plan import build_episode_plan_prompt
 from dramaloop.prompts.outline import build_outline_prompt
@@ -11,6 +15,7 @@ from dramaloop.prompts.season import build_season_prompt
 from dramaloop.schemas.character import CharacterArtifact
 from dramaloop.schemas.continuity import ContinuityState
 from dramaloop.schemas.critique import CritiqueArtifact
+from dramaloop.schemas.episode_critique import EpisodeCritiqueArtifact
 from dramaloop.schemas.input import StoryRequest
 from dramaloop.schemas.outline import OutlineArtifact
 from dramaloop.schemas.premise import PremiseArtifact
@@ -136,3 +141,31 @@ def run_rewrite_stage(
         expected_score_improvement=critique.weakest_dimensions,
     )
     return rewrite_artifact, revised_draft
+
+
+def run_episode_critique_stage(
+    client: LLMClient,
+    season: SeasonBible,
+    episode: EpisodePlanItem,
+    continuity: ContinuityState,
+    markdown: str,
+) -> EpisodeCritiqueArtifact:
+    return client.generate_structured(
+        role="episode_critique_scoring",
+        prompt=build_episode_critique_prompt(season, episode, continuity, markdown),
+        response_model=EpisodeCritiqueArtifact,
+    )
+
+
+def run_episode_rewrite_stage(
+    client: LLMClient,
+    season: SeasonBible,
+    episode: EpisodePlanItem,
+    continuity: ContinuityState,
+    markdown: str,
+    critique: EpisodeCritiqueArtifact,
+) -> str:
+    return client.generate_text(
+        role="episode_targeted_rewrite",
+        prompt=build_episode_rewrite_prompt(season, episode, continuity, markdown, critique),
+    )

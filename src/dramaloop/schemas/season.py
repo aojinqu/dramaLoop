@@ -33,3 +33,5 @@ class EpisodeArtifact(BaseModel):
     episode_summary: str = Field(min_length=1)
     hook_delivered: str = Field(min_length=1)
     qa_passed: bool
+    overall_score: float | None = None
+    rewrite_applied: bool = False

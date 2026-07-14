@@ -73,11 +73,21 @@ def _format_single_run_report(report: dict) -> str:
 def _format_dataset_report(report: dict) -> str:
     lines = [
         f"case_count: {report['case_count']}",
+        f"success_rate: {report.get('success_rate', 0):.2f}",
         f"average_final_score: {report['average_final_score']:.2f}",
+        f"average_completed_episode_ratio: {report.get('average_completed_episode_ratio', 0):.2f}",
         "reports:",
     ]
     for item in report["reports"]:
-        lines.append(f"- {item['run_id']}: final_score={item['overall_scores'][-1]:.2f}")
+        if item.get("format") == "episodic_series":
+            lines.append(
+                f"- {item['run_id']}: format=episodic_series success={item.get('success')} "
+                f"avg_score={item.get('average_episode_score', 0):.2f} "
+                f"episodes={item.get('completed_episodes', 0)}/{item.get('total_episodes', 0)}"
+            )
+        else:
+            scores = item.get("overall_scores") or [0.0]
+            lines.append(f"- {item['run_id']}: final_score={scores[-1]:.2f}")
     return "\n".join(lines)
 
 

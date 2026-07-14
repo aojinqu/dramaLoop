@@ -1,0 +1,45 @@
+- idea: "她被退婚后反手嫁给宿敌，两集内完成反击起势"
+  style: [都市情感, 逆袭]
+  length: short
+  format: episodic_series
+  episode_count: 2
+  episode_min_words: 200
+  episode_max_words: 400
+  constraints: [节奏快, 结尾有钩子]
+  enable_episode_critique: true
+- idea: "重生后她提前识破继妹陷害，两集内改写命运"
+  style: [重生, 爽文]
+  length: short
+  format: episodic_series
+  episode_count: 2
+  episode_min_words: 200
+  episode_max_words: 400
+  constraints: [节奏快, 结尾有钩子]
+  enable_episode_critique: true
+- idea: "她在订婚宴发现未婚夫另有秘密，两集内撕开悬疑线"
+  style: [都市情感, 悬疑]
+  length: short
+  format: episodic_series
+  episode_count: 2
+  episode_min_words: 200
+  episode_max_words: 400
+  constraints: [节奏快, 结尾有钩子]
+  enable_episode_critique: true
+- idea: "她被全网网暴后掌握反转证据，两集内开始公开打脸"
+  style: [逆袭, 爽文]
+  length: short
+  format: episodic_series
+  episode_count: 2
+  episode_min_words: 200
+  episode_max_words: 400
+  constraints: [节奏快, 结尾有钩子]
+  enable_episode_critique: true
+- idea: "替嫁当晚她发现新郎不是人设，两集内反客为主"
+  style: [都市情感, 狗血短剧感]
+  length: short
+  format: episodic_series
+  episode_count: 2
+  episode_min_words: 200
+  episode_max_words: 400
+  constraints: [节奏快, 结尾有钩子]
+  enable_episode_critique: true

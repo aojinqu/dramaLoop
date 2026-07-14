@@ -24,44 +24,63 @@ def _episodic_client(
     *,
     episode_drafts: list[str],
     episode_plan: list[dict[str, object]] | None = None,
+    critique: dict[str, object] | None = None,
+    rewrite_text: str | None = None,
 ) -> MockLLMClient:
-    return MockLLMClient(
-        structured_outputs={
-            "season_planning": {
-                "title_candidate": "退婚后我反嫁宿敌",
-                "series_logline": "她在婚礼当天被抛弃后，反手嫁给宿敌，用12集完成反杀。",
-                "core_conflict": "女主要在前任与家族的双重羞辱中拿回尊严和主动权。",
-                "target_episode_count": 12,
-                "final_payoff": "前任公开失势，女主赢回名声与感情主动权。",
-                "main_character_arcs": ["林晚从受辱者变成设局者"],
-                "must_land_beats": ["婚礼羞辱", "闪婚联盟", "公开反杀"],
-            },
-            "episode_plan_generation": {
-                "episodes": episode_plan
-                or [
-                    {
-                        "episode_number": 1,
-                        "title": "婚礼反击",
-                        "opening_situation": "婚礼现场，新郎带旧爱现身。",
-                        "core_conflict": "女主必须马上止损反击。",
-                        "must_happen": ["当众受辱", "提出改嫁"],
-                        "hook_ending": "顾承骁说他知道偷拍视频是谁放的。",
-                        "sets_up_next": "下一集进入危险闪婚。",
-                    },
-                    {
-                        "episode_number": 2,
-                        "title": "危险闪婚",
-                        "opening_situation": "顾承骁公开接住女主抛出的婚约。",
-                        "core_conflict": "女主必须决定要不要借势反击。",
-                        "must_happen": ["闪婚协议", "前任破防"],
-                        "hook_ending": "顾承骁拿出了偷拍视频原件。",
-                        "sets_up_next": "下一集追查幕后黑手。",
-                    },
-                ]
-            },
+    structured: dict[str, object] = {
+        "season_planning": {
+            "title_candidate": "退婚后我反嫁宿敌",
+            "series_logline": "她在婚礼当天被抛弃后，反手嫁给宿敌，用12集完成反杀。",
+            "core_conflict": "女主要在前任与家族的双重羞辱中拿回尊严和主动权。",
+            "target_episode_count": 12,
+            "final_payoff": "前任公开失势，女主赢回名声与感情主动权。",
+            "main_character_arcs": ["林晚从受辱者变成设局者"],
+            "must_land_beats": ["婚礼羞辱", "闪婚联盟", "公开反杀"],
         },
-        text_outputs={"episode_draft_generation": episode_drafts},
-    )
+        "episode_plan_generation": {
+            "episodes": episode_plan
+            or [
+                {
+                    "episode_number": 1,
+                    "title": "婚礼反击",
+                    "opening_situation": "婚礼现场，新郎带旧爱现身。",
+                    "core_conflict": "女主必须马上止损反击。",
+                    "must_happen": ["当众受辱", "提出改嫁"],
+                    "hook_ending": "顾承骁说他知道偷拍视频是谁放的。",
+                    "sets_up_next": "下一集进入危险闪婚。",
+                },
+                {
+                    "episode_number": 2,
+                    "title": "危险闪婚",
+                    "opening_situation": "顾承骁公开接住女主抛出的婚约。",
+                    "core_conflict": "女主必须决定要不要借势反击。",
+                    "must_happen": ["闪婚协议", "前任破防"],
+                    "hook_ending": "顾承骁拿出了偷拍视频原件。",
+                    "sets_up_next": "下一集追查幕后黑手。",
+                },
+            ]
+        },
+        "episode_critique_scoring": critique
+        or {
+            "episode_number": 1,
+            "overall_score": 7.5,
+            "dimension_scores": {
+                "hook_strength": 7.5,
+                "conflict_intensity": 7.5,
+                "pacing": 7.5,
+                "short_drama_feel": 7.5,
+                "carryover": 8.0,
+            },
+            "weakest_dimensions": ["pacing"],
+            "rewrite_needed": False,
+            "rewrite_target": "本集已达标，无需大改。",
+            "issues": [],
+        },
+    }
+    text_outputs: dict[str, str | list[str]] = {"episode_draft_generation": episode_drafts}
+    if rewrite_text is not None:
+        text_outputs["episode_targeted_rewrite"] = rewrite_text
+    return MockLLMClient(structured_outputs=structured, text_outputs=text_outputs)
 
 
 def test_run_episodic_pipeline_writes_episode_files_and_final_story(tmp_path: Path) -> None:
@@ -203,3 +222,71 @@ def test_requested_final_episode_can_end_cleanly(tmp_path: Path) -> None:
 
     assert "终局回收" in episode_one["episode_summary"]
     assert "把悬念推向下一集" not in episode_one["episode_summary"]
+
+
+def test_run_episodic_pipeline_writes_critique_and_rewrites_low_score_episode(tmp_path: Path) -> None:
+    settings = Settings(runs_dir=tmp_path / "runs", provider="mock")
+    draft = (
+        "第1集正文。婚礼大屏亮起时，林晚看见未婚夫牵着旧爱走进来。"
+        "她当众提出改嫁，顾承骁接住她，散场时低声说他知道偷拍视频是谁放的。"
+    )
+    rewritten = draft + " 她盯着他，确认这句话不是安慰，而是下一场反击的起点。"
+    client = MockLLMClient(
+        structured_outputs={
+            "season_planning": {
+                "title_candidate": "退婚后我反嫁宿敌",
+                "series_logline": "她在婚礼当天被抛弃后，反手嫁给宿敌，用12集完成反杀。",
+                "core_conflict": "女主要在前任与家族的双重羞辱中拿回尊严和主动权。",
+                "target_episode_count": 12,
+                "final_payoff": "前任公开失势，女主赢回名声与感情主动权。",
+                "main_character_arcs": ["林晚从受辱者变成设局者"],
+                "must_land_beats": ["婚礼羞辱", "闪婚联盟", "公开反杀"],
+            },
+            "episode_plan_generation": {
+                "episodes": [
+                    {
+                        "episode_number": 1,
+                        "title": "婚礼反击",
+                        "opening_situation": "婚礼现场，新郎带旧爱现身。",
+                        "core_conflict": "女主必须马上止损反击。",
+                        "must_happen": ["当众受辱", "提出改嫁"],
+                        "hook_ending": "顾承骁说他知道偷拍视频是谁放的。",
+                        "sets_up_next": "下一集进入危险闪婚。",
+                    }
+                ]
+            },
+            "episode_critique_scoring": {
+                "episode_number": 1,
+                "overall_score": 5.5,
+                "dimension_scores": {
+                    "hook_strength": 5.0,
+                    "conflict_intensity": 6.0,
+                    "pacing": 5.5,
+                    "short_drama_feel": 6.0,
+                    "carryover": 8.0,
+                },
+                "weakest_dimensions": ["hook_strength", "pacing"],
+                "rewrite_needed": True,
+                "rewrite_target": "强化集末钩子并加快中段冲突推进。",
+                "issues": ["结尾钩子偏软"],
+            },
+        },
+        text_outputs={
+            "episode_draft_generation": [draft],
+            "episode_targeted_rewrite": [rewritten],
+        },
+    )
+
+    result = run_episodic_pipeline(_episodic_request(episode_count=1), settings, client)
+    critique_path = result.run_dir / "episodes" / "episode_01_critique.json"
+    episode_md = (result.run_dir / "episodes" / "episode_01.md").read_text(encoding="utf-8")
+    events = (result.run_dir / "events.jsonl").read_text(encoding="utf-8")
+
+    assert critique_path.exists()
+    critique = json.loads(critique_path.read_text(encoding="utf-8"))
+    assert critique["rewrite_needed"] is True
+    assert critique["overall_score"] == 5.5
+    assert episode_md == rewritten
+    assert "下一场反击的起点" in episode_md
+    assert '"stage":"episode_critique"' in events
+    assert '"stage":"episode_rewrite"' in events

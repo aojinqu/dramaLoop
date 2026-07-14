@@ -1,12 +1,14 @@
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
 from dramaloop.schemas.input import StoryRequest
+from dramaloop.schemas.season import EpisodePlanItem
 
 
 class WebRunCreateRequest(StoryRequest):
     length: Literal["short"] = "short"
+    pause_after_plan: bool = True
 
 
 class WebStageSnapshot(BaseModel):
@@ -21,6 +23,7 @@ class WebEpisodeSnapshot(BaseModel):
     word_count: int | None = None
     hook_line: str | None = None
     content: str | None = None
+    overall_score: float | None = None
 
 
 class WebRunCreated(BaseModel):
@@ -31,7 +34,7 @@ class WebRunCreated(BaseModel):
 
 class WebRunDetail(BaseModel):
     run_id: str
-    status: Literal["running", "completed", "failed"]
+    status: Literal["running", "paused", "completed", "failed", "cancelled"]
     request: StoryRequest
     stages: list[WebStageSnapshot]
     current_stage: str | None = None
@@ -42,4 +45,19 @@ class WebRunDetail(BaseModel):
     overall_score: float | None = None
     rewrite_focus: str | None = None
     season_summary: str | None = None
+    season_bible: dict[str, Any] | None = None
+    episode_plan: dict[str, Any] | None = None
     available_artifacts: list[str] = Field(default_factory=list)
+    control_phase: Literal["awaiting_plan_review", "between_episodes", "idle"] | None = None
+    pause_after_plan: bool = True
+    has_live_controller: bool = False
+
+
+class WebEpisodePlanUpdateRequest(BaseModel):
+    episodes: list[EpisodePlanItem]
+
+
+class WebControlResponse(BaseModel):
+    run_id: str
+    status: Literal["running", "paused", "completed", "failed", "cancelled"]
+    control_phase: Literal["awaiting_plan_review", "between_episodes", "idle"] | None = None

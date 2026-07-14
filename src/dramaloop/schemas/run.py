@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 class RunManifest(BaseModel):
     run_id: str
-    status: Literal["running", "completed", "failed"]
+    status: Literal["running", "paused", "completed", "failed", "cancelled"]
     started_at: str
     finished_at: str | None = None
     model_provider: str

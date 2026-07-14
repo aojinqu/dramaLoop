@@ -15,6 +15,7 @@ class StoryRequest(BaseModel):
     episode_min_words: int = Field(default=500, ge=100)
     episode_max_words: int = Field(default=800, ge=100)
     delivery_mode: Literal["stream_and_final"] = "stream_and_final"
+    enable_episode_critique: bool = True
 
     @model_validator(mode="after")
     def validate_episode_word_range(self) -> "StoryRequest":

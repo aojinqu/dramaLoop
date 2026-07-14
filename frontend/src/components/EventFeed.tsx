@@ -1,37 +1,58 @@
+import { useEffect, useMemo, useRef } from "react";
+import { formatProgressMessage } from "../progress";
 import type { StreamMessage } from "../types";
 
 type EventFeedProps = {
   events: StreamMessage[];
+  liveActivity?: string | null;
+  streamState?: "idle" | "streaming" | "paused" | "reconnecting" | "failed";
 };
 
-const placeholderEvents = [
-  "run_created · run_id reserved",
-  "stage_started · premise_refinement",
-  "artifact_ready · premise.json",
-];
+export function EventFeed({ events, liveActivity = null, streamState = "idle" }: EventFeedProps) {
+  const listRef = useRef<HTMLUListElement>(null);
+  const lines = useMemo(
+    () => events.map((message, index) => formatProgressMessage(message, index)),
+    [events],
+  );
+  const isLive = streamState === "streaming" || streamState === "reconnecting";
 
-export function EventFeed({ events }: EventFeedProps) {
-  const lines =
-    events.length > 0
-      ? events.map(({ event, data }) => {
-          const stage = typeof data.stage === "string" ? data.stage : null;
-          const artifact = typeof data.artifact === "string" ? data.artifact : null;
-          const suffix = stage ?? artifact ?? "event received";
-          return `${event} · ${suffix}`;
-        })
-      : placeholderEvents;
+  useEffect(() => {
+    const node = listRef.current;
+    if (!node) {
+      return;
+    }
+    node.scrollTop = node.scrollHeight;
+  }, [lines.length, liveActivity]);
 
   return (
     <section className="panel event-panel">
       <div className="panel-header">
-        <p className="eyebrow">Streaming</p>
-        <h2>Event Stream</h2>
+        <div>
+          <p className="eyebrow">Streaming</p>
+          <h2>实时进度</h2>
+        </div>
+        <p>{events.length ? `${events.length} 条` : "等待事件"}</p>
       </div>
-      <ul className="event-list">
-        {lines.map((event) => (
-          <li key={event}>{event}</li>
-        ))}
-      </ul>
+
+      {liveActivity || isLive ? (
+        <div className={`live-activity ${isLive ? "is-live" : ""}`}>
+          {isLive ? <span className="live-dot" aria-hidden="true" /> : null}
+          <span>{liveActivity || "正在接收进度事件…"}</span>
+        </div>
+      ) : null}
+
+      {lines.length === 0 ? (
+        <p className="empty-hint">生成开始后，这里会实时滚动输出阶段与分集进度。</p>
+      ) : (
+        <ul className="event-list progress-log" ref={listRef}>
+          {lines.map((line) => (
+            <li key={line.id} className={`progress-line progress-line--${line.tone}`}>
+              <time>{line.at}</time>
+              <span>{line.text}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

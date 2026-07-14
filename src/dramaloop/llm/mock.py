@@ -218,6 +218,38 @@ DEFAULT_STRUCTURED_OUTPUTS: dict[str, list[dict[str, Any]]] = {
             "rewrite_plan": {"scope": "开头一段", "must_fix": ["让第一句更锋利"], "keep": ["结尾直播反杀", "核心冲突关系"]},
         },
     ],
+    "episode_critique_scoring": [
+        {
+            "episode_number": 1,
+            "overall_score": 5.5,
+            "dimension_scores": {
+                "hook_strength": 5.0,
+                "conflict_intensity": 6.0,
+                "pacing": 5.5,
+                "short_drama_feel": 6.0,
+                "carryover": 8.0,
+            },
+            "weakest_dimensions": ["hook_strength", "pacing"],
+            "rewrite_needed": True,
+            "rewrite_target": "强化集末钩子并加快中段冲突推进。",
+            "issues": ["结尾钩子偏软", "中段节奏拖沓"],
+        },
+        {
+            "episode_number": 2,
+            "overall_score": 7.2,
+            "dimension_scores": {
+                "hook_strength": 7.0,
+                "conflict_intensity": 7.5,
+                "pacing": 7.0,
+                "short_drama_feel": 7.5,
+                "carryover": 7.0,
+            },
+            "weakest_dimensions": ["pacing"],
+            "rewrite_needed": False,
+            "rewrite_target": "本集节奏已达标，可微调中段过渡。",
+            "issues": [],
+        },
+    ],
 }
 
 DEFAULT_TEXT_OUTPUTS: dict[str, list[str]] = {
@@ -228,6 +260,9 @@ DEFAULT_TEXT_OUTPUTS: dict[str, list[str]] = {
         "# 替嫁反击\n\n婚礼大屏亮起时，林晚看见了陆闻舟牵着别人的手。\n\n她没有哭，只当着所有宾客的面，转头看向陆闻舟最大的死对头顾承骁：\"顾总，你还缺新娘吗？\"\n\n顾承骁看了她三秒，抬手替她摘下头纱：\"林小姐，你敢嫁，我就敢让他们今天一起难堪。\"\n\n最后一场董事会直播里，顾承骁把陆闻舟转移资产的证据推上屏幕。林晚接过话筒，盯着那张瞬间惨白的脸，慢慢开口：\"你在婚礼上丢掉的，不只是我，是你陆家最后一点体面。\"\n\n直播弹幕刷得满屏都是，陆闻舟想解释，却被股东当场请出了会场。林晚终于把那口气，原封不动地还了回去。\n"
     ],
     "episode_draft_generation": _build_default_episode_drafts(),
+    "episode_targeted_rewrite": [
+        "第1集改写正文。婚礼大屏亮起时，林晚看见未婚夫牵着旧爱走进来，整个宴会厅都安静了一瞬。她指尖发冷，却没有哭，只是在所有人的注视下慢慢转身，看向角落里的顾承骁。这个男人是前任最恨的死对头，也是全场唯一还带着笑的人。林晚提着婚纱一步步走到他面前，声音不高，却足够让满场宾客听清：‘顾总，你还缺一个新娘吗？’ 满堂哗然。前任脸色骤变，冲过来想抓她的手，却被顾承骁先一步挡开。顾承骁垂眼看着她，像是在确认她是不是一时赌气。几秒后，他抬手替她扶正头纱，低声道：‘你敢嫁，我就敢替你把这场羞辱翻过来。’ 下一秒，他当众宣布婚礼继续，只是新郎换人。前任彻底失控，旧爱也白了脸。林晚以为这已经够疯了，没想到走下台时，顾承骁忽然贴近她耳边，声音压得极低：‘我知道偷拍视频是谁放的——而且证据就在我车上。’",
+    ],
 }
 
 
