@@ -122,6 +122,10 @@ def _render_dataset_report_markdown(aggregate: dict) -> str:
 
 def run_dataset_eval(dataset_path: Path, settings: Settings) -> dict:
     cases = yaml.safe_load(dataset_path.read_text(encoding="utf-8"))
+    if any("ablation_modes" in case for case in cases):
+        from dramaloop.eval.ablation import run_research_harness_eval
+
+        return run_research_harness_eval(dataset_path, settings)
     reports = []
     for case in cases:
         request = StoryRequest.model_validate(case)

@@ -13,7 +13,7 @@ def test_premise_prompt_mentions_hook_and_ending_payoff() -> None:
     prompt = build_premise_prompt(request)
 
     assert "hook" in prompt.lower()
-    assert "ending payoff" in prompt.lower()
+    assert "ending_payoff_plan" in prompt
 
 
 def test_stage_chain_returns_typed_outputs() -> None:

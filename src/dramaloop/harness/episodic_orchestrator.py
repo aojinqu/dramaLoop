@@ -12,15 +12,25 @@ from dramaloop.harness.episode_runner import (
     write_episode_critique_artifact,
 )
 from dramaloop.harness.orchestrator import _record_stage_event, build_running_manifest
+from dramaloop.harness.realization import validate_rewrite_coverage
+from dramaloop.harness.runtime import HarnessedLLMClient, HarnessRuntime
 from dramaloop.harness.stages import run_episode_draft_stage, run_episode_plan_stage, run_season_stage
+from dramaloop.harness.trajectory import TrajectoryRegulator
 from dramaloop.llm.base import LLMClient
 from dramaloop.schemas.continuity import ContinuityState
 from dramaloop.schemas.episode_critique import EpisodeCritiqueArtifact
 from dramaloop.schemas.input import StoryRequest
+from dramaloop.schemas.realization import RealizationResult
 from dramaloop.schemas.run import RunManifest, RunResult
 from dramaloop.schemas.season import EpisodeArtifact, EpisodePlanArtifact, EpisodePlanItem, SeasonBible
 from dramaloop.storage.artifacts import write_json_artifact, write_markdown_artifact
-from dramaloop.storage.runs import build_run_id, create_run_paths, initialize_run_files, reserve_run_id
+from dramaloop.storage.runs import (
+    build_run_id,
+    create_run_paths,
+    initialize_run_files,
+    load_run_paths,
+    reserve_run_id,
+)
 from dramaloop.utils.json_io import load_json
 
 
@@ -282,8 +292,10 @@ def _generate_episode_markdown(
     previous_markdown: str | None,
     request: StoryRequest,
     events_path: Path,
+    runtime: HarnessRuntime | None = None,
 ) -> tuple[str, str]:
     final_failures: list[str] = []
+    encountered_failures: list[str] = []
     markdown = ""
     for attempt in range(3):
         _record_stage_event(
@@ -314,7 +326,38 @@ def _generate_episode_markdown(
             previous_markdown=previous_markdown,
         )
         if not final_failures:
+            if (
+                runtime is not None
+                and runtime.realization_enabled
+                and encountered_failures
+            ):
+                runtime.record_realization(
+                    RealizationResult(
+                        stage="episode_draft_generation",
+                        status="retried",
+                        issues=encountered_failures,
+                        retry_reason="episode continuity contract failed",
+                    )
+                )
             break
+        encountered_failures.extend(final_failures)
+        if runtime is not None and runtime.realization_enabled:
+            runtime.record_realization(
+                RealizationResult(
+                    stage="episode_draft_generation",
+                    status="retried" if attempt < 2 else "blocked",
+                    issues=final_failures,
+                    retry_reason="episode continuity contract failed",
+                )
+            )
+        if runtime is not None and runtime.regulation_enabled:
+            runtime.record_regulation(
+                TrajectoryRegulator().decide_retry(
+                    stage="episode_draft_generation",
+                    consecutive_failures=attempt + 1,
+                    max_retries=3,
+                )
+            )
 
     if final_failures:
         detail = f"episode={episode.episode_number};reasons={' | '.join(final_failures)}"
@@ -342,6 +385,7 @@ def _apply_episode_quality(
     request: StoryRequest,
     run_root: Path,
     events_path: Path,
+    runtime: HarnessRuntime | None = None,
 ) -> tuple[str, str, EpisodeCritiqueArtifact | None, bool]:
     """Run critique(+optional rewrite). On rewrite continuity failure, roll back."""
     if not request.enable_episode_critique:
@@ -365,6 +409,16 @@ def _apply_episode_quality(
     )
 
     if rewrite_applied:
+        if runtime is not None and runtime.realization_enabled:
+            rewrite_realization = validate_rewrite_coverage(
+                pre_rewrite,
+                markdown,
+                rewrite_target="prose_fluency",
+            ).model_copy(update={"stage": "episode_targeted_rewrite"})
+            runtime.record_realization(rewrite_realization)
+            if rewrite_realization.status == "blocked":
+                markdown = pre_rewrite
+                rewrite_applied = False
         previous_summary = continuity.story_so_far_summary if episode.episode_number > 1 else None
         failures = _detect_continuity_failures(
             actual_total_episodes=request.episode_count,
@@ -432,6 +486,41 @@ def _persist_episode(
     return artifact
 
 
+def _record_episode_harness_artifacts(
+    *,
+    runtime: HarnessRuntime,
+    episode: EpisodePlanItem,
+    artifact: EpisodeArtifact,
+    critique: EpisodeCritiqueArtifact | None,
+    rewrite_applied: bool,
+    continuity: ContinuityState,
+) -> None:
+    if critique is not None:
+        runtime.record_artifact(
+            stage="episode_critique_scoring",
+            artifact_ref=f"episodes/episode_{episode.episode_number:02d}_critique.json",
+            payload=critique,
+        )
+    output_stage = (
+        "episode_targeted_rewrite" if rewrite_applied else "episode_draft_generation"
+    )
+    runtime.record_artifact(
+        stage=output_stage,
+        artifact_ref=f"episodes/episode_{episode.episode_number:02d}.json",
+        payload=artifact,
+    )
+    runtime.record_artifact(
+        stage=output_stage,
+        artifact_ref=f"episodes/episode_{episode.episode_number:02d}.md",
+        payload=artifact.markdown,
+    )
+    runtime.record_artifact(
+        stage="episode_draft_generation",
+        artifact_ref="continuity_state.json",
+        payload=continuity,
+    )
+
+
 def _rebuild_final_story(run_root: Path, episode_count: int) -> list[str]:
     episode_markdowns: list[str] = []
     for number in range(1, episode_count + 1):
@@ -497,6 +586,13 @@ def run_episodic_pipeline(
     manifest.format = "episodic_series"
     manifest.total_episodes = request.episode_count
     initialize_run_files(run_paths, request, manifest)
+    runtime = HarnessRuntime(
+        run_root=run_paths.root,
+        run_id=run_id,
+        request=request,
+        settings=settings,
+    )
+    client = HarnessedLLMClient(client, runtime)
     episode_markdowns: list[str] = []
 
     try:
@@ -504,6 +600,11 @@ def run_episodic_pipeline(
 
         season = run_season_stage(client, request)
         write_json_artifact(run_paths.root / "season_bible.json", season)
+        runtime.record_artifact(
+            stage="season_planning",
+            artifact_ref="season_bible.json",
+            payload=season,
+        )
         _record_stage_event(run_paths.events_path, "season_planning", "completed", artifact="season_bible.json")
 
         episode_plan = EpisodePlanArtifact(
@@ -514,6 +615,11 @@ def run_episodic_pipeline(
             )
         )
         write_json_artifact(run_paths.root / "episode_plan.json", episode_plan)
+        runtime.record_artifact(
+            stage="episode_plan_generation",
+            artifact_ref="episode_plan.json",
+            payload=episode_plan,
+        )
         _record_stage_event(run_paths.events_path, "episode_plan_generation", "completed", artifact="episode_plan.json")
         _validate_episode_plan_range(episode_plan.episodes, request.episode_count)
 
@@ -531,6 +637,11 @@ def run_episodic_pipeline(
 
         continuity = build_initial_continuity_state(season)
         write_json_artifact(run_paths.root / "continuity_state.json", continuity)
+        runtime.record_artifact(
+            stage="episode_plan_generation",
+            artifact_ref="continuity_state.json",
+            payload=continuity,
+        )
         previous_markdown: str | None = None
 
         for planned in episode_plan.episodes[: request.episode_count]:
@@ -555,6 +666,7 @@ def run_episodic_pipeline(
                 previous_markdown=previous_markdown,
                 request=request,
                 events_path=run_paths.events_path,
+                runtime=runtime,
             )
             markdown, hook_signal, critique, rewrite_applied = _apply_episode_quality(
                 client=client,
@@ -566,6 +678,7 @@ def run_episodic_pipeline(
                 request=request,
                 run_root=run_paths.root,
                 events_path=run_paths.events_path,
+                runtime=runtime,
             )
             artifact = _persist_episode(
                 run_root=run_paths.root,
@@ -585,20 +698,41 @@ def run_episodic_pipeline(
             continuity.last_episode_hook = artifact.hook_delivered
             previous_markdown = artifact.markdown
             write_json_artifact(run_paths.root / "continuity_state.json", continuity)
+            _record_episode_harness_artifacts(
+                runtime=runtime,
+                episode=episode,
+                artifact=artifact,
+                critique=critique,
+                rewrite_applied=rewrite_applied,
+                continuity=continuity,
+            )
             manifest.completed_episodes = episode.episode_number
             write_json_artifact(run_paths.manifest_path, manifest)
 
+        runtime.prepare_prompt("final_assembly", "")
         final_story_path = run_paths.root / "final_story.md"
         _record_stage_event(run_paths.events_path, "final_assembly", "started")
         write_markdown_artifact(final_story_path, "\n\n".join(episode_markdowns))
+        runtime.record_artifact(
+            stage="final_assembly",
+            artifact_ref="final_story.md",
+            payload="\n\n".join(episode_markdowns),
+        )
         summary_path = run_paths.root / "run_summary.md"
         write_markdown_artifact(summary_path, f"已完成 {manifest.completed_episodes} / {manifest.total_episodes} 集")
+        runtime.record_artifact(
+            stage="final_assembly",
+            artifact_ref="run_summary.md",
+            payload=f"已完成 {manifest.completed_episodes} / {manifest.total_episodes} 集",
+        )
+        runtime.complete_stage("final_assembly")
         _record_stage_event(run_paths.events_path, "final_assembly", "completed", artifact="final_story.md")
         manifest.status = "completed"
         manifest.final_artifact = "final_story.md"
         manifest.finished_at = datetime.now().isoformat()
         write_json_artifact(run_paths.manifest_path, manifest)
         _record_stage_event(run_paths.events_path, "run", "completed", artifact="final_story.md")
+        runtime.finalize("completed")
         return RunResult(run_id=run_id, run_dir=run_paths.root, final_story_path=final_story_path, summary_path=summary_path)
     except RunCancelled as exc:
         manifest.status = "cancelled"
@@ -606,6 +740,7 @@ def run_episodic_pipeline(
         manifest.error_message = f"cancelled: {exc}"
         write_json_artifact(run_paths.manifest_path, manifest)
         _record_stage_event(run_paths.events_path, "run", "cancelled", detail=str(exc))
+        runtime.finalize("cancelled", reason=str(exc))
         final_story_path = run_paths.root / "final_story.md"
         summary_path = run_paths.root / "run_summary.md"
         if episode_markdowns:
@@ -628,6 +763,7 @@ def run_episodic_pipeline(
         manifest.error_message = str(exc)
         write_json_artifact(run_paths.manifest_path, manifest)
         _record_stage_event(run_paths.events_path, "run", "failed", detail=str(exc))
+        runtime.finalize("failed", reason=str(exc))
         raise
 
 
@@ -639,8 +775,15 @@ def regenerate_episode(
     client: LLMClient,
 ) -> RunResult:
     """Regenerate one episode and invalidate later episodes for continuity safety."""
-    run_paths = create_run_paths(settings.runs_dir, run_id)
+    run_paths = load_run_paths(settings.runs_dir, run_id)
     request = StoryRequest.model_validate(load_json(run_paths.request_path))
+    runtime = HarnessRuntime(
+        run_root=run_paths.root,
+        run_id=run_id,
+        request=request,
+        settings=settings,
+    )
+    client = HarnessedLLMClient(client, runtime)
     season = SeasonBible.model_validate(load_json(run_paths.root / "season_bible.json"))
     episode_plan = EpisodePlanArtifact.model_validate(load_json(run_paths.root / "episode_plan.json"))
     episode = next((item for item in episode_plan.episodes if item.episode_number == episode_number), None)
@@ -659,6 +802,7 @@ def regenerate_episode(
         iteration=episode_number,
         detail="regenerate",
     )
+    runtime.invalidate_episodes_after(episode_number - 1)
 
     continuity, previous_markdown = _load_continuity_before_episode(run_paths.root, season, episode_number)
     markdown, hook_signal = _generate_episode_markdown(
@@ -669,6 +813,7 @@ def regenerate_episode(
         previous_markdown=previous_markdown,
         request=request,
         events_path=run_paths.events_path,
+        runtime=runtime,
     )
     markdown, hook_signal, critique, rewrite_applied = _apply_episode_quality(
         client=client,
@@ -680,6 +825,7 @@ def regenerate_episode(
         request=request,
         run_root=run_paths.root,
         events_path=run_paths.events_path,
+        runtime=runtime,
     )
     artifact = _persist_episode(
         run_root=run_paths.root,
@@ -697,6 +843,14 @@ def regenerate_episode(
     continuity.story_so_far_summary = artifact.episode_summary
     continuity.last_episode_hook = artifact.hook_delivered
     write_json_artifact(run_paths.root / "continuity_state.json", continuity)
+    _record_episode_harness_artifacts(
+        runtime=runtime,
+        episode=episode,
+        artifact=artifact,
+        critique=critique,
+        rewrite_applied=rewrite_applied,
+        continuity=continuity,
+    )
 
     _invalidate_episodes_after(run_paths.root, episode_number)
     manifest.completed_episodes = episode_number
@@ -706,8 +860,20 @@ def regenerate_episode(
     final_story_path = run_paths.root / "final_story.md"
     summary_path = run_paths.root / "run_summary.md"
     if len(episode_markdowns) >= request.episode_count:
+        runtime.prepare_prompt("final_assembly", "")
         write_markdown_artifact(final_story_path, "\n\n".join(episode_markdowns))
         write_markdown_artifact(summary_path, f"已完成 {request.episode_count} / {request.episode_count} 集")
+        runtime.record_artifact(
+            stage="final_assembly",
+            artifact_ref="final_story.md",
+            payload="\n\n".join(episode_markdowns),
+        )
+        runtime.record_artifact(
+            stage="final_assembly",
+            artifact_ref="run_summary.md",
+            payload=f"已完成 {request.episode_count} / {request.episode_count} 集",
+        )
+        runtime.complete_stage("final_assembly")
         manifest.status = "completed"
         manifest.final_artifact = "final_story.md"
         manifest.finished_at = datetime.now().isoformat()
@@ -715,10 +881,21 @@ def regenerate_episode(
     else:
         write_markdown_artifact(final_story_path, "\n\n".join(episode_markdowns))
         write_markdown_artifact(summary_path, f"已重生成第 {episode_number} 集，后续集需继续生成")
+        runtime.record_artifact(
+            stage="final_assembly",
+            artifact_ref="final_story.md",
+            payload="\n\n".join(episode_markdowns),
+        )
+        runtime.record_artifact(
+            stage="final_assembly",
+            artifact_ref="run_summary.md",
+            payload=f"已重生成第 {episode_number} 集，后续集需继续生成",
+        )
         manifest.status = "paused"
         manifest.finished_at = None
         _record_stage_event(run_paths.events_path, "run", "paused", detail=f"after_regenerate_{episode_number}")
     write_json_artifact(run_paths.manifest_path, manifest)
+    runtime.finalize(manifest.status)
     return RunResult(run_id=run_id, run_dir=run_paths.root, final_story_path=final_story_path, summary_path=summary_path)
 
 
@@ -731,8 +908,15 @@ def continue_episodic_run(
     controller: RunController | None = None,
 ) -> RunResult:
     """Continue generating remaining episodes after pause / cancel / partial regenerate."""
-    run_paths = create_run_paths(settings.runs_dir, run_id)
+    run_paths = load_run_paths(settings.runs_dir, run_id)
     request = StoryRequest.model_validate(load_json(run_paths.request_path))
+    runtime = HarnessRuntime(
+        run_root=run_paths.root,
+        run_id=run_id,
+        request=request,
+        settings=settings,
+    )
+    client = HarnessedLLMClient(client, runtime)
     season = SeasonBible.model_validate(load_json(run_paths.root / "season_bible.json"))
     episode_plan = EpisodePlanArtifact.model_validate(load_json(run_paths.root / "episode_plan.json"))
     manifest = RunManifest.model_validate(load_json(run_paths.manifest_path))
@@ -740,6 +924,7 @@ def continue_episodic_run(
     if start_from > request.episode_count:
         final_story_path = run_paths.root / "final_story.md"
         summary_path = run_paths.root / "run_summary.md"
+        runtime.finalize(manifest.status)
         return RunResult(run_id=run_id, run_dir=run_paths.root, final_story_path=final_story_path, summary_path=summary_path)
 
     continuity, previous_markdown = _load_continuity_before_episode(run_paths.root, season, start_from)
@@ -783,6 +968,7 @@ def continue_episodic_run(
                 previous_markdown=previous_markdown,
                 request=request,
                 events_path=run_paths.events_path,
+                runtime=runtime,
             )
             markdown, hook_signal, critique, rewrite_applied = _apply_episode_quality(
                 client=client,
@@ -794,6 +980,7 @@ def continue_episodic_run(
                 request=request,
                 run_root=run_paths.root,
                 events_path=run_paths.events_path,
+                runtime=runtime,
             )
             artifact = _persist_episode(
                 run_root=run_paths.root,
@@ -813,19 +1000,40 @@ def continue_episodic_run(
             continuity.last_episode_hook = artifact.hook_delivered
             previous_markdown = artifact.markdown
             write_json_artifact(run_paths.root / "continuity_state.json", continuity)
+            _record_episode_harness_artifacts(
+                runtime=runtime,
+                episode=episode,
+                artifact=artifact,
+                critique=critique,
+                rewrite_applied=rewrite_applied,
+                continuity=continuity,
+            )
             manifest.completed_episodes = episode.episode_number
             write_json_artifact(run_paths.manifest_path, manifest)
 
+        runtime.prepare_prompt("final_assembly", "")
         final_story_path = run_paths.root / "final_story.md"
         summary_path = run_paths.root / "run_summary.md"
         write_markdown_artifact(final_story_path, "\n\n".join(episode_markdowns))
         write_markdown_artifact(summary_path, f"已完成 {manifest.completed_episodes} / {manifest.total_episodes} 集")
+        runtime.record_artifact(
+            stage="final_assembly",
+            artifact_ref="final_story.md",
+            payload="\n\n".join(episode_markdowns),
+        )
+        runtime.record_artifact(
+            stage="final_assembly",
+            artifact_ref="run_summary.md",
+            payload=f"已完成 {manifest.completed_episodes} / {manifest.total_episodes} 集",
+        )
+        runtime.complete_stage("final_assembly")
         _record_stage_event(run_paths.events_path, "final_assembly", "completed", artifact="final_story.md")
         manifest.status = "completed"
         manifest.final_artifact = "final_story.md"
         manifest.finished_at = datetime.now().isoformat()
         write_json_artifact(run_paths.manifest_path, manifest)
         _record_stage_event(run_paths.events_path, "run", "completed", artifact="final_story.md")
+        runtime.finalize("completed")
         return RunResult(run_id=run_id, run_dir=run_paths.root, final_story_path=final_story_path, summary_path=summary_path)
     except RunCancelled as exc:
         manifest.status = "cancelled"
@@ -833,6 +1041,7 @@ def continue_episodic_run(
         manifest.error_message = f"cancelled: {exc}"
         write_json_artifact(run_paths.manifest_path, manifest)
         _record_stage_event(run_paths.events_path, "run", "cancelled", detail=str(exc))
+        runtime.finalize("cancelled", reason=str(exc))
         final_story_path = run_paths.root / "final_story.md"
         summary_path = run_paths.root / "run_summary.md"
         if episode_markdowns:
@@ -849,3 +1058,11 @@ def continue_episodic_run(
             final_story_path=final_story_path,
             summary_path=summary_path,
         )
+    except Exception as exc:
+        manifest.status = "failed"
+        manifest.finished_at = datetime.now().isoformat()
+        manifest.error_message = str(exc)
+        write_json_artifact(run_paths.manifest_path, manifest)
+        _record_stage_event(run_paths.events_path, "run", "failed", detail=str(exc))
+        runtime.finalize("failed", reason=str(exc))
+        raise

@@ -86,6 +86,7 @@ uv run dramaloop run --idea "她被退婚后反手嫁给宿敌" --style 都市�
 uv run dramaloop inspect runs/<run_id>
 uv run dramaloop eval --dataset evals/datasets/mvp_cases.yaml
 DRAMALOOP_PROVIDER=mock uv run dramaloop eval --dataset evals/datasets/episodic_mvp_cases.yaml
+DRAMALOOP_PROVIDER=mock uv run dramaloop eval --dataset evals/datasets/research_harness_cases.yaml
 ```
 
 分集模式默认开启质量环（critique → 最多 1 次 rewrite）；可用 `enable_episode_critique=false` 关闭。评测指标见 `project/spec/evaluation.md`。
@@ -97,6 +98,19 @@ DRAMALOOP_PROVIDER=mock uv run dramaloop eval --dataset evals/datasets/episodic_
 分集模式会切换为：
 
 `input -> season -> episode_plan -> episodes(+critique/rewrite) -> final`
+
+模型调用外层由可配置的 research harness 包装：
+
+`stage contract -> memory/skill -> context budget -> model -> realization -> trajectory regulation`
+
+默认启用 `full_harness`。可通过 `DRAMALOOP_HARNESS_MODE` 选择
+`baseline`、`contract_enabled`、`memory_skill_enabled`、
+`memory_context_budgeted`、`realization_enabled`、
+`trajectory_regulation_enabled` 或 `full_harness`。
+
+stage context budget 默认使用模型上下文窗口的 40%，可通过
+`DRAMALOOP_MODEL_CONTEXT_WINDOW_TOKENS` 和
+`DRAMALOOP_STAGE_CONTEXT_BUDGET_RATIO` 调整。
 
 ## Run 输出
 
@@ -115,6 +129,16 @@ DRAMALOOP_PROVIDER=mock uv run dramaloop eval --dataset evals/datasets/episodic_
 - `final_story.md`
 - `run_summary.md`
 
+每次 run 还会写出：
+- `run_memory.json`
+- `stage_trace.jsonl`
+- `memory_trace.jsonl`
+- `context_trace.jsonl`
+- `decision_trace.jsonl`
+- `skill_trace.jsonl`
+- `realization_trace.jsonl`
+- `trajectory_trace.jsonl`
+
 分集模式还会写出：
 - `season_bible.json`
 - `episode_plan.json`
@@ -128,3 +152,8 @@ DRAMALOOP_PROVIDER=mock uv run dramaloop eval --dataset evals/datasets/episodic_
 - `final_story.md`
 - `run_summary.md`
 - `human_actions.jsonl`（Web 上暂停 / 改 plan / 重生 / 取消等人工操作）
+
+真实 research eval 默认使用 DeepSeek judge。通过
+`DRAMALOOP_JUDGE_API_KEY`（或 `DEEPSEEK_API_KEY`）、
+`DRAMALOOP_JUDGE_MODEL_NAME` 和 `DRAMALOOP_JUDGE_BASE_URL` 配置。
+mock provider 不访问真实 judge。

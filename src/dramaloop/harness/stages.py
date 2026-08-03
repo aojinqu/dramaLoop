@@ -138,7 +138,7 @@ def run_rewrite_stage(
         target_section=critique.rewrite_target,
         goals=critique.rewrite_plan.must_fix,
         changes_made=critique.rewrite_plan.must_fix,
-        expected_score_improvement=critique.weakest_dimensions,
+        expected_score_improvement=list(critique.weakest_dimensions),
     )
     return rewrite_artifact, revised_draft
 

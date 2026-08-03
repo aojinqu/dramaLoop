@@ -3,6 +3,7 @@ from datetime import datetime
 from pathlib import Path
 import threading
 import time
+from typing import Literal, cast
 
 import typer
 import yaml
@@ -13,7 +14,7 @@ from dramaloop.harness.episodic_orchestrator import run_episodic_pipeline
 from dramaloop.harness.orchestrator import run_story_pipeline
 from dramaloop.llm.provider import build_llm_client
 from dramaloop.schemas.input import StoryRequest
-from dramaloop.schemas.run import RunEvent
+from dramaloop.schemas.run import RunEvent, RunResult
 from dramaloop.storage.runs import plan_run_id
 
 
@@ -48,7 +49,10 @@ def _load_request(
         idea=idea,
         style=style,
         length="short",
-        format=request_format or "single_story",
+        format=cast(
+            Literal["single_story", "episodic_series"],
+            request_format or "single_story",
+        ),
         audience=audience,
         constraints=constraint,
         episode_count=episode_count or 12,
@@ -206,9 +210,9 @@ def run(
 
     if "error" in holder:
         raise holder["error"]  # type: ignore[misc]
-    result = holder["result"]
-    assert result is not None
-    typer.echo(str(result.run_dir))
+    streamed_result = holder["result"]
+    assert isinstance(streamed_result, RunResult)
+    typer.echo(str(streamed_result.run_dir))
 
 
 @app.command()

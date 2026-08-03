@@ -1,6 +1,10 @@
+import json
+from collections.abc import Mapping
 from typing import Any
 
+from dramaloop.harness.realization import realize_structured_output
 from dramaloop.llm.base import LLMClient, LLMInvocationError, TModel
+from dramaloop.schemas.realization import RealizationResult
 
 
 def _build_default_episode_drafts() -> list[str]:
@@ -20,7 +24,10 @@ def _build_default_episode_drafts() -> list[str]:
     ]
 
 
-DEFAULT_STRUCTURED_OUTPUTS: dict[str, list[dict[str, Any]]] = {
+DEFAULT_STRUCTURED_OUTPUTS: dict[
+    str,
+    dict[str, Any] | str | list[dict[str, Any] | str],
+] = {
     "premise_refinement": [
         {
             "title_candidate": "替嫁反击",
@@ -250,9 +257,40 @@ DEFAULT_STRUCTURED_OUTPUTS: dict[str, list[dict[str, Any]]] = {
             "issues": [],
         },
     ],
+    "research_judge": [
+        {
+            "dimensions": {
+                "hook_strength": 8.0,
+                "conflict_intensity": 8.0,
+                "pacing": 7.5,
+                "short_drama_feel": 8.0,
+                "character_consistency": 8.0,
+                "continuity": 8.0,
+                "context_fidelity": 8.0,
+                "rewrite_effectiveness": 7.5,
+            },
+            "rationale": "结构完整，约束与改写目标均得到保留。",
+        }
+    ],
+    "research_pairwise_judge": [
+        {
+            "winner": "tie",
+            "dimension_winners": {
+                "hook_strength": "tie",
+                "conflict_intensity": "tie",
+                "pacing": "tie",
+                "short_drama_feel": "tie",
+                "character_consistency": "tie",
+                "continuity": "tie",
+                "context_fidelity": "tie",
+                "rewrite_effectiveness": "tie",
+            },
+            "rationale": "两个 mock 输出质量相同。",
+        }
+    ],
 }
 
-DEFAULT_TEXT_OUTPUTS: dict[str, list[str]] = {
+DEFAULT_TEXT_OUTPUTS: dict[str, str | list[str]] = {
     "draft_generation": [
         "# 替嫁反击\n\n婚礼大屏亮起时，林晚看见了陆闻舟牵着别人的手。\n\n她没有哭，只当着所有宾客的面，转头看向陆闻舟最大的死对头顾承骁：\"顾总，你还缺新娘吗？\"\n\n顾承骁看了她三秒，抬手替她摘下头纱：\"林小姐，你敢嫁，我就敢让他们今天一起难堪。\"\n"
     ],
@@ -270,8 +308,11 @@ class MockLLMClient(LLMClient):
     def __init__(
         self,
         *,
-        structured_outputs: dict[str, dict[str, Any] | list[dict[str, Any]]],
-        text_outputs: dict[str, str | list[str]],
+        structured_outputs: Mapping[
+            str,
+            dict[str, Any] | str | list[dict[str, Any] | str],
+        ],
+        text_outputs: Mapping[str, str | list[str]],
     ) -> None:
         self._structured_outputs = {
             role: list(payloads) if isinstance(payloads, list) else [payloads]
@@ -281,6 +322,7 @@ class MockLLMClient(LLMClient):
             role: list(payloads) if isinstance(payloads, list) else [payloads]
             for role, payloads in text_outputs.items()
         }
+        self.last_realization_result: RealizationResult | None = None
 
     def _next_payload(self, store: dict[str, list[Any]], role: str, kind: str) -> Any:
         try:
@@ -291,7 +333,23 @@ class MockLLMClient(LLMClient):
 
     def generate_structured(self, *, role: str, prompt: str, response_model: type[TModel]) -> TModel:
         payload = self._next_payload(self._structured_outputs, role, "structured")
+        if isinstance(payload, str):
+            realized = realize_structured_output(
+                role,
+                payload,
+                response_model,
+                retry=lambda _: self._raw_retry_payload(role),
+            )
+            self.last_realization_result = realized.result
+            if realized.output is None:
+                raise LLMInvocationError("; ".join(realized.result.issues))
+            return realized.output
+        self.last_realization_result = RealizationResult(stage=role, status="accepted")
         return response_model.model_validate(payload)
+
+    def _raw_retry_payload(self, role: str) -> str:
+        payload = self._next_payload(self._structured_outputs, role, "structured")
+        return payload if isinstance(payload, str) else json.dumps(payload, ensure_ascii=False)
 
     def generate_text(self, *, role: str, prompt: str) -> str:
         return self._next_payload(self._text_outputs, role, "text")
@@ -299,4 +357,3 @@ class MockLLMClient(LLMClient):
 
 def build_default_mock_client() -> MockLLMClient:
     return MockLLMClient(structured_outputs=DEFAULT_STRUCTURED_OUTPUTS, text_outputs=DEFAULT_TEXT_OUTPUTS)
-

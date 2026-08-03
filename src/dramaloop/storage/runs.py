@@ -46,6 +46,19 @@ def create_run_paths(runs_dir: Path, run_id: str) -> RunPaths:
     )
 
 
+def load_run_paths(runs_dir: Path, run_id: str) -> RunPaths:
+    root = runs_dir / run_id
+    if not root.is_dir():
+        raise FileNotFoundError(f"Run directory does not exist: {root}")
+    return RunPaths(
+        root=root,
+        request_path=root / "request.json",
+        manifest_path=root / "run_manifest.json",
+        events_path=root / "events.jsonl",
+        episodes_dir=root / "episodes",
+    )
+
+
 def initialize_run_files(run_paths: RunPaths, request: StoryRequest, manifest: RunManifest) -> None:
     dump_json(run_paths.request_path, request)
     dump_json(run_paths.manifest_path, manifest)
