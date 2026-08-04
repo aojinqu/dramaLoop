@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 
+import pytest
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
@@ -16,6 +17,11 @@ def setup_function() -> None:
 
 def teardown_function() -> None:
     CONTROLLERS.clear()
+
+
+@pytest.fixture(autouse=True)
+def mock_provider(monkeypatch) -> None:
+    monkeypatch.setenv("DRAMALOOP_PROVIDER", "mock")
 
 
 def test_create_run_returns_run_id_and_detail_snapshot(monkeypatch) -> None:

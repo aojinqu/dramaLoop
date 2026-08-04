@@ -1,0 +1,20 @@
+- id: episodic-continuity-preserve-threads
+  stage: episode_draft_generation
+  trigger: episodic_series with unresolved_threads
+  guidance: 起草下一集前先重述未解决线索，并至少把一条线索延续到集末钩子。
+  source: failure_mining:episodic-continuity-001
+  priority: 80
+
+- id: rewrite-fix-weakest-dimension
+  stage: targeted_rewrite
+  trigger: rewrite with critique target
+  guidance: 直接修复评分最低的批评维度，并保留所有已确立的事实与人物关系。
+  source: specification:rewrite-target-alignment
+  priority: 90
+
+- id: episode-rewrite-preserve-continuity
+  stage: episode_targeted_rewrite
+  trigger: episodic_series with unresolved_threads
+  guidance: 定向修复时保留上一集钩子、既有人物关系和未解决线索。
+  source: specification:episodic-continuity
+  priority: 90

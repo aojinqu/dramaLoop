@@ -4,6 +4,8 @@ from typing import Literal
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from dramaloop.schemas.harness import HarnessMode
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="DRAMALOOP_", env_file=".env", extra="ignore")
@@ -12,6 +14,9 @@ class Settings(BaseSettings):
     model_name: str = "claude-sonnet-5"
     api_key: str | None = None
     base_url: str | None = None
+    judge_model_name: str = "deepseek-chat"
+    judge_api_key: str | None = None
+    judge_base_url: str = "https://api.deepseek.com/anthropic"
     runs_dir: Path = Path("runs")
     artifacts_dir: Path = Path("artifacts")
     evals_dir: Path = Path("evals")
@@ -19,3 +24,8 @@ class Settings(BaseSettings):
     target_threshold: float = 7.5
     minimum_dimension_threshold: int = 6
     min_delta: float = 0.3
+    harness_enabled: bool = True
+    harness_mode: HarnessMode = "full_harness"
+    model_context_window_tokens: int = Field(default=32768, ge=1024)
+    stage_context_budget_ratio: float = Field(default=0.4, gt=0.0, le=1.0)
+    procedural_skills_path: Path = Path("evals/skills/procedural_skills.yaml")

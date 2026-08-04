@@ -21,7 +21,7 @@ from dramaloop.schemas.run import RunEvent
 from dramaloop.schemas.season import EpisodePlanArtifact
 from dramaloop.storage.artifacts import append_event, write_json_artifact
 from dramaloop.storage.runs import plan_run_id
-from dramaloop.utils.json_io import dump_json, load_json
+from dramaloop.utils.json_io import dump_json
 from dramaloop.web.schemas import (
     WebControlResponse,
     WebEpisodePlanUpdateRequest,

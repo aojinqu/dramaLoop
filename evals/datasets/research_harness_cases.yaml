@@ -1,0 +1,68 @@
+- id: single-story-basic-001
+  format: single_story
+  idea: 她在婚礼被抛弃后，当场改嫁前任最忌惮的商业对手
+  style: [都市情感, 逆袭]
+  length: short
+  constraints: [开场十秒内引爆冲突, 结尾完成公开反击]
+  expected_contracts: [preserve_user_constraints, complete_critique_rewrite]
+  ablation_modes: &all_modes
+    - baseline
+    - contract_enabled
+    - memory_skill_enabled
+    - memory_context_budgeted
+    - realization_enabled
+    - trajectory_regulation_enabled
+    - full_harness
+
+- id: episodic-continuity-001
+  format: episodic_series
+  idea: 她发现未婚夫背叛后与宿敌结盟，两集内追出偷拍视频的幕后线索
+  style: [都市情感, 悬疑]
+  length: short
+  episode_count: 2
+  episode_min_words: 200
+  episode_max_words: 400
+  constraints: [第二集必须承接第一集收尾, 每集结尾保留下一集钩子]
+  expected_contracts: [preserve_character_relationships, carry_unresolved_threads]
+  ablation_modes: *all_modes
+
+- id: constrained-relationship-001
+  format: single_story
+  idea: 两位互不信任的调查记者被迫合作揭开旧案
+  style: [都市悬疑, 强冲突]
+  length: short
+  constraints:
+    - 林夏和周屿始终是互相试探的盟友，不能改成亲属
+    - 真相公开前两人不能彻底和解
+    - 结尾必须由林夏亲自公布证据
+  expected_contracts: [preserve_character_relationships, preserve_user_constraints]
+  ablation_modes: *all_modes
+
+- id: long-context-budget-001
+  format: episodic_series
+  idea: 家族继承人用两集追查一份被篡改的遗嘱
+  style: [豪门, 悬疑, 逆袭]
+  length: short
+  episode_count: 2
+  episode_min_words: 200
+  episode_max_words: 400
+  constraints:
+    - 主角名为沈知微
+    - 管家只提供线索，不能成为幕后主谋
+    - 红色印章是贯穿两集的关键物证
+    - 第一集不能揭晓最终主谋
+    - 第二集必须回收第一集的保险柜密码
+    - 祖母与主角的信任关系不能改变
+    - 结尾必须保留遗嘱原件
+  expected_contracts: [required_context_recall, evidence_backed_memory]
+  ablation_modes: *all_modes
+
+- id: rewrite-effectiveness-001
+  format: single_story
+  idea: 她直播澄清网暴真相，却发现最关键的证人临时反口
+  style: [逆袭, 爽文, 直播]
+  length: short
+  max_iterations: 2
+  constraints: [改写必须优先修复最低评分维度, 保留证人反口这一核心反转]
+  expected_contracts: [rewrite_target_alignment, preserve_user_constraints]
+  ablation_modes: *all_modes

@@ -1,4 +1,7 @@
-def ordered_dimensions() -> list[str]:
+from dramaloop.schemas.critique import DimensionName
+
+
+def ordered_dimensions() -> list[DimensionName]:
     return [
         "hook_strength",
         "character_consistency",

@@ -174,3 +174,5 @@ def test_generate_structured_retries_when_first_attempt_is_truncated() -> None:
 
     assert artifact.episodes[0].title == "意外重来"
     assert client._client.messages.calls == 2
+    assert client.last_realization_result is not None
+    assert client.last_realization_result.status == "retried"

@@ -4,20 +4,24 @@ import re
 from typing import Any
 
 from anthropic import Anthropic
+from pydantic import ValidationError
+import yaml
 
 from dramaloop.config import Settings
 from dramaloop.llm.base import LLMClient, LLMInvocationError, TModel
 from dramaloop.llm.mock import build_default_mock_client
+from dramaloop.schemas.realization import RealizationResult
 
 
 class AnthropicCompatibleLLMClient(LLMClient):
     def __init__(self, api_key: str, model_name: str, base_url: str | None = None) -> None:
         self._base_url = base_url
-        client_kwargs = {"api_key": api_key}
+        client_kwargs: dict[str, Any] = {"api_key": api_key}
         if base_url:
             client_kwargs["base_url"] = base_url
         self._client = Anthropic(**client_kwargs)
         self._model_name = model_name
+        self.last_realization_result: RealizationResult | None = None
 
     def _normalize_payload(self, role: str, payload: dict[str, Any]) -> dict[str, Any]:
         normalized = dict(payload)
@@ -109,12 +113,19 @@ class AnthropicCompatibleLLMClient(LLMClient):
                 except json.JSONDecodeError:
                     continue
 
+        try:
+            yaml_payload = yaml.safe_load(content)
+        except yaml.YAMLError:
+            yaml_payload = None
+        if isinstance(yaml_payload, (dict, list)):
+            return yaml_payload
+
         snippet = content[:200].replace("\n", "\\n")
         raise LLMInvocationError(f"Structured response was not valid JSON: {snippet}")
 
     def generate_structured(self, *, role: str, prompt: str, response_model: type[TModel]) -> TModel:
         max_tokens = self._structured_max_tokens(role)
-        attempts = [
+        attempts: list[dict[str, Any]] = [
             {
                 "max_tokens": max_tokens,
                 "temperature": 0.4,
@@ -130,8 +141,7 @@ class AnthropicCompatibleLLMClient(LLMClient):
         ]
 
         last_error: LLMInvocationError | None = None
-        payload: Any = None
-        for attempt in attempts:
+        for attempt_index, attempt in enumerate(attempts):
             response = self._client.messages.create(
                 model=self._model_name,
                 max_tokens=attempt["max_tokens"],
@@ -139,33 +149,61 @@ class AnthropicCompatibleLLMClient(LLMClient):
                 system=attempt["system"],
                 messages=[{"role": "user", "content": attempt["prompt"]}],
             )
-            text = "".join(block.text for block in response.content if getattr(block, "type", None) == "text")
+            text = "".join(
+                getattr(block, "text", "")
+                for block in response.content
+                if getattr(block, "type", None) == "text"
+            )
             try:
                 payload = self._parse_structured_response_text(text)
-                break
-            except LLMInvocationError as exc:
+                if isinstance(payload, dict):
+                    payload = self._normalize_payload(role, payload)
+                output = response_model.model_validate(payload)
+            except (LLMInvocationError, ValidationError) as exc:
                 stop_reason = getattr(response, "stop_reason", None)
                 detail = f"{exc}"
                 if stop_reason == "max_tokens":
                     detail = f"模型输出被 max_tokens 截断。{detail}"
                 last_error = LLMInvocationError(f"Structured response for role={role} was not valid JSON. {detail}")
-        else:
-            assert last_error is not None
-            raise last_error
+                continue
 
-        if isinstance(payload, dict):
-            payload = self._normalize_payload(role, payload)
-        return response_model.model_validate(payload)
+            content = text.strip()
+            repaired = content.startswith("```") or not content.startswith(("{", "["))
+            if attempt_index > 0:
+                self.last_realization_result = RealizationResult(
+                    stage=role,
+                    status="retried",
+                    retry_reason=str(last_error) if last_error else "first attempt failed",
+                )
+            elif repaired:
+                self.last_realization_result = RealizationResult(
+                    stage=role,
+                    status="repaired",
+                    repair_summary="removed response wrapper and recovered JSON payload",
+                )
+            else:
+                self.last_realization_result = RealizationResult(
+                    stage=role,
+                    status="accepted",
+                )
+            return output
+
+        assert last_error is not None
+        raise last_error
 
     def generate_text(self, *, role: str, prompt: str) -> str:
         response = self._client.messages.create(
             model=self._model_name,
             max_tokens=2500,
             temperature=0.8,
-            system=f"You are the {role} stage in a short-drama generation system.",
+            system=f"你是短剧生成系统中的 {role} 阶段。",
             messages=[{"role": "user", "content": prompt}],
         )
-        return "".join(block.text for block in response.content if getattr(block, "type", None) == "text")
+        return "".join(
+            getattr(block, "text", "")
+            for block in response.content
+            if getattr(block, "type", None) == "text"
+        )
 
 
 def _resolve_api_key(settings: Settings) -> str | None:
@@ -191,3 +229,18 @@ def build_llm_client(settings: Settings) -> LLMClient:
             base_url=_resolve_base_url(settings),
         )
     raise LLMInvocationError(f"Unsupported provider: {settings.provider}")
+
+
+def build_judge_client(settings: Settings) -> LLMClient:
+    if settings.provider == "mock":
+        return build_default_mock_client()
+    api_key = settings.judge_api_key or os.getenv("DEEPSEEK_API_KEY")
+    if not api_key:
+        raise LLMInvocationError(
+            "Configure DRAMALOOP_JUDGE_API_KEY or DEEPSEEK_API_KEY for the DeepSeek judge"
+        )
+    return AnthropicCompatibleLLMClient(
+        api_key=api_key,
+        model_name=settings.judge_model_name,
+        base_url=settings.judge_base_url,
+    )
