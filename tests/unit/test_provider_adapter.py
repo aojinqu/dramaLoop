@@ -3,6 +3,8 @@ import pytest
 from dramaloop.config import Settings
 from dramaloop.llm.base import LLMInvocationError
 from dramaloop.llm.provider import AnthropicCompatibleLLMClient, build_llm_client
+from dramaloop.schemas.character import CharacterArtifact
+from dramaloop.schemas.critique import CritiqueArtifact
 from dramaloop.schemas.premise import PremiseArtifact
 from dramaloop.schemas.season import EpisodePlanArtifact, SeasonBible
 
@@ -79,6 +81,69 @@ def test_normalize_payload_maps_common_season_aliases() -> None:
     assert artifact.title_candidate == "退婚后我反嫁宿敌"
     assert artifact.target_episode_count == 12
     assert artifact.must_land_beats == ["婚礼羞辱", "闪婚联盟", "公开反杀"]
+
+
+def test_normalize_payload_maps_live_character_role_aliases() -> None:
+    client = AnthropicCompatibleLLMClient.__new__(AnthropicCompatibleLLMClient)
+
+    normalized = client._normalize_payload(
+        "character_card_generation",
+        {
+            "characters": [
+                {
+                    "name": "顾承骁",
+                    "role": "ally",
+                    "public_identity": "商业对手",
+                    "core_desire": "帮助女主反击",
+                    "core_fear": "联盟破裂",
+                    "conflict_links": ["林晚"],
+                    "voice_style": "克制",
+                    "arc_target": "从盟友成为可信伙伴",
+                }
+            ]
+        },
+    )
+
+    artifact = CharacterArtifact.model_validate(normalized)
+
+    assert artifact.characters[0].role == "supporting"
+
+
+def test_normalize_payload_maps_critique_dimension_to_rewrite_target() -> None:
+    client = AnthropicCompatibleLLMClient.__new__(AnthropicCompatibleLLMClient)
+    dimensions = {
+        name: {
+            "score": 7,
+            "reason": "原因",
+            "evidence": "证据",
+            "improvement_advice": "建议",
+        }
+        for name in (
+            "hook_strength",
+            "character_consistency",
+            "conflict_intensity",
+            "pacing",
+            "short_drama_feel",
+            "ending_payoff",
+            "language_fluency",
+            "originality",
+        )
+    }
+
+    normalized = client._normalize_payload(
+        "critique_scoring",
+        {
+            "dimension_scores": dimensions,
+            "overall_score": 7.0,
+            "weakest_dimensions": ["pacing"],
+            "rewrite_target": "pacing",
+            "rewrite_plan": {"scope": "中段", "must_fix": [], "keep": []},
+        },
+    )
+
+    artifact = CritiqueArtifact.model_validate(normalized)
+
+    assert artifact.rewrite_target == "mid_conflict_escalation"
 
 
 def test_normalize_payload_maps_common_episode_plan_aliases() -> None:
@@ -158,6 +223,21 @@ def test_generate_structured_retries_when_first_attempt_is_truncated() -> None:
                 '{"episodes": [{"episode_number": 1, "title": "意外重来", "opening_situation": "回到关键节点。", "core_conflict": "决定是否改命。", "must_happen": ["先验证重生", "试着改写错误"], "hook_ending": "他发现第一次改命带来代价。", "sets_up_next": "下一集进入第一次选择。"}]}'
             )
 
+        def stream(self, **kwargs):
+            response = self.create(**kwargs)
+
+            class _Stream:
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, *_):
+                    return None
+
+                def get_final_message(self):
+                    return response
+
+            return _Stream()
+
     class _FakeClient:
         def __init__(self) -> None:
             self.messages = _FakeMessages()
@@ -176,3 +256,125 @@ def test_generate_structured_retries_when_first_attempt_is_truncated() -> None:
     assert client._client.messages.calls == 2
     assert client.last_realization_result is not None
     assert client.last_realization_result.status == "retried"
+
+
+def test_structured_token_budget_scales_with_stage_complexity() -> None:
+    client = AnthropicCompatibleLLMClient.__new__(AnthropicCompatibleLLMClient)
+
+    assert client._structured_max_tokens("premise_refinement") == 6000
+    assert client._structured_max_tokens("critique_scoring") == 6000
+    assert client._structured_max_tokens("episode_plan_generation") == 8000
+
+
+def test_generate_text_retries_when_first_attempt_is_truncated() -> None:
+    class _FakeBlock:
+        def __init__(self, text: str) -> None:
+            self.type = "text"
+            self.text = text
+
+    class _FakeResponse:
+        def __init__(self, text: str, stop_reason: str | None = None) -> None:
+            self.content = [_FakeBlock(text)]
+            self.stop_reason = stop_reason
+            self.model = "fake-model"
+            self.usage = type(
+                "Usage",
+                (),
+                {
+                    "input_tokens": 10,
+                    "output_tokens": 20,
+                    "cache_creation_input_tokens": 0,
+                    "cache_read_input_tokens": 0,
+                },
+            )()
+
+    class _FakeMessages:
+        def __init__(self) -> None:
+            self.calls: list[dict] = []
+
+        def create(self, **kwargs):
+            self.calls.append(kwargs)
+            if len(self.calls) == 1:
+                return _FakeResponse("故事写到一半", stop_reason="max_tokens")
+            return _FakeResponse("完整故事。")
+
+        def stream(self, **kwargs):
+            response = self.create(**kwargs)
+
+            class _Stream:
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, *_):
+                    return None
+
+                def get_final_message(self):
+                    return response
+
+            return _Stream()
+
+    class _FakeClient:
+        def __init__(self) -> None:
+            self.messages = _FakeMessages()
+
+    client = AnthropicCompatibleLLMClient.__new__(AnthropicCompatibleLLMClient)
+    client._client = _FakeClient()
+    client._model_name = "fake-model"
+    client.last_realization_result = None
+
+    output = client.generate_text(role="draft_generation", prompt="生成完整故事")
+
+    assert output == "完整故事。"
+    assert len(client._client.messages.calls) == 2
+    assert client._client.messages.calls[0]["max_tokens"] == 8000
+    assert client._client.messages.calls[1]["max_tokens"] == 16000
+    assert client.last_realization_result is not None
+    assert client.last_realization_result.status == "retried"
+    usage = client.drain_usage_records()
+    assert len(usage) == 2
+    assert sum(item["input_tokens"] for item in usage) == 20
+    assert sum(item["output_tokens"] for item in usage) == 40
+
+
+def test_rewrite_token_budget_allows_reasoning_and_complete_text() -> None:
+    client = AnthropicCompatibleLLMClient.__new__(AnthropicCompatibleLLMClient)
+
+    assert client._text_max_tokens("targeted_rewrite") == 16000
+
+
+def test_large_message_budget_uses_streaming_api() -> None:
+    expected = object()
+
+    class _FakeStream:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return None
+
+        def get_final_message(self):
+            return expected
+
+    class _FakeMessages:
+        def create(self, **kwargs):
+            raise AssertionError("large requests must not use non-streaming create")
+
+        def stream(self, **kwargs):
+            assert kwargs["max_tokens"] == 16000
+            return _FakeStream()
+
+    class _FakeClient:
+        messages = _FakeMessages()
+
+    client = AnthropicCompatibleLLMClient.__new__(AnthropicCompatibleLLMClient)
+    client._client = _FakeClient()
+
+    response = client._create_message(
+        model="fake-model",
+        max_tokens=16000,
+        temperature=0.5,
+        system="test",
+        messages=[{"role": "user", "content": "test"}],
+    )
+
+    assert response is expected

@@ -9,6 +9,7 @@ RewriteTarget = Literal[
     "reversal_reveal",
     "ending_payoff",
     "prose_fluency",
+    "originality_revision",
 ]
 
 DimensionName = Literal[
@@ -19,6 +20,7 @@ DimensionName = Literal[
     "short_drama_feel",
     "ending_payoff",
     "language_fluency",
+    "originality",
 ]
 
 

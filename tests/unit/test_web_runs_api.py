@@ -286,6 +286,7 @@ def test_get_run_hydrates_completed_status_from_manifest(tmp_path, monkeypatch) 
                     "pacing": 5.5,
                     "short_drama_feel": 6.0,
                     "carryover": 8.0,
+                    "originality": 5.0,
                 },
                 "weakest_dimensions": ["hook_strength"],
                 "rewrite_needed": True,

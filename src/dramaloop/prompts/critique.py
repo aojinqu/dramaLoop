@@ -47,6 +47,12 @@ CRITIQUE_JSON_SCHEMA = """{
       \"reason\": \"原因\",
       \"evidence\": \"证据\",
       \"improvement_advice\": \"改进建议\"
+    },
+    \"originality\": {
+      \"score\": 7,
+      \"reason\": \"原因\",
+      \"evidence\": \"证据\",
+      \"improvement_advice\": \"改进建议\"
     }
   },
   \"overall_score\": 7.0,
@@ -67,16 +73,19 @@ def build_critique_prompt(draft_markdown: str, premise: PremiseArtifact, charact
             *build_json_contract(
                 CRITIQUE_JSON_SCHEMA,
                 extra_rules=[
-                    "dimension_scores 必须且只能包含这些 key：hook_strength、character_consistency、conflict_intensity、pacing、short_drama_feel、ending_payoff、language_fluency。",
+                    "dimension_scores 必须且只能包含这些 key：hook_strength、character_consistency、conflict_intensity、pacing、short_drama_feel、ending_payoff、language_fluency、originality。",
                     "每个 score 都必须是 1 到 10 的整数。",
                     "weakest_dimensions 必须是已有维度 key 组成的数组。",
+                    "rewrite_target 只能是 opening_hook、character_motivation、mid_conflict_escalation、reversal_reveal、ending_payoff、prose_fluency、originality_revision 之一，不能直接填写维度名。",
                     "rewrite_plan.must_fix 和 rewrite_plan.keep 都必须是数组。",
                 ],
             ),
             f"一句话概括：{premise.logline}",
             f"角色数量：{len(characters.characters)}",
             f"大纲节拍数：{len(outline.beats)}",
-            "请对草稿在 hook_strength、character_consistency、conflict_intensity、pacing、short_drama_feel、ending_payoff、language_fluency 这些维度上进行打分。",
+            "请对草稿在 hook_strength、character_consistency、conflict_intensity、pacing、short_drama_feel、ending_payoff、language_fluency、originality 这些维度上进行打分。",
+            "originality 重点检查：核心冲突是否依赖当前人物和场域，关键细节是否推动因果，反转是否由前文选择产生。",
+            "如果只是替换名字后复用退婚改嫁、豪门打脸、直播翻盘、重生复仇、大佬救场、证据大屏等常见骨架，originality 不得高于 5 分。",
             "同时输出 weakest_dimensions、rewrite_target 和 rewrite_plan。",
             draft_markdown,
         ]

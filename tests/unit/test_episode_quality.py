@@ -53,6 +53,7 @@ def _critique(*, overall_score: float = 5.5) -> EpisodeCritiqueArtifact:
             "pacing": 5.5,
             "short_drama_feel": 6.0,
             "carryover": 7.0,
+            "originality": 5.0,
         },
         weakest_dimensions=["hook_strength", "pacing"],
         rewrite_needed=True,
@@ -71,6 +72,7 @@ def test_episode_critique_schema_accepts_required_dimensions() -> None:
         "pacing",
         "short_drama_feel",
         "carryover",
+        "originality",
     }
     assert critique.rewrite_needed is True
     assert "钩子" in critique.rewrite_target
@@ -127,6 +129,7 @@ def test_episode_critique_and_rewrite_stages_parse_via_mock() -> None:
                     "pacing": 5.5,
                     "short_drama_feel": 6.0,
                     "carryover": 7.0,
+                    "originality": 5.0,
                 },
                 "weakest_dimensions": ["hook_strength", "pacing"],
                 "rewrite_needed": True,

@@ -9,9 +9,13 @@ def determine_stop_reason(
     iteration: int,
     max_iterations: int,
 ) -> str | None:
-    if current_critique.overall_score >= settings.target_threshold:
+    dimensions_pass = all(
+        score.score >= settings.minimum_dimension_threshold
+        for score in current_critique.dimension_scores.values()
+    )
+    if current_critique.overall_score >= settings.target_threshold and dimensions_pass:
         return "target_threshold_reached"
-    if all(score.score >= settings.minimum_dimension_threshold for score in current_critique.dimension_scores.values()):
+    if dimensions_pass:
         return "minimum_dimension_threshold_reached"
     if previous_overall_score is not None and current_critique.overall_score - previous_overall_score < settings.min_delta:
         return "improvement_below_min_delta"

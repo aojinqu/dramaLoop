@@ -21,10 +21,10 @@ export function RunTimeline({ detail, streamState }: RunTimelineProps) {
   const progress = total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0;
 
   return (
-    <section className="panel timeline-panel">
-      <div className="panel-header">
-        <div>
-          <p className="eyebrow">Runtime</p>
+    <section className="runtime-card timeline-panel">
+      <div className="runtime-card-header">
+        <div className="runtime-title">
+          <p className="eyebrow">Pipeline</p>
           <h2>阶段进度</h2>
         </div>
         <p className={`stream-badge stream-badge--${streamState}`}>{streamStateLabel(streamState)}</p>
@@ -33,23 +33,28 @@ export function RunTimeline({ detail, streamState }: RunTimelineProps) {
       {detail ? (
         <div className="progress-block">
           <div className="progress-meta">
-            <strong>
-              {completed} / {total || "—"} 集
-            </strong>
             <span>
               {detail.current_stage ? stageLabel(detail.current_stage) : statusLabel(detail.status)}
               {currentEpisode ? ` · 第 ${currentEpisode} 集` : ""}
             </span>
+            <strong>{completed}/{total || "—"} 集 · {progress}%</strong>
           </div>
-          <div className="progress-track" aria-hidden="true">
+          <div
+            className="progress-track"
+            role="progressbar"
+            aria-label="分集生成进度"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={progress}
+          >
             <div className="progress-fill" style={{ width: `${progress}%` }} />
           </div>
         </div>
       ) : (
-        <p className="empty-hint">发起生成后，这里会显示四阶段进度。</p>
+        <p className="runtime-empty">填写创意并开始后，运行状态会在这里更新。</p>
       )}
 
-      <ul className="timeline-list">
+      <ol className="timeline-list">
         {stages.map((stage) => {
           const className = [
             "timeline-item",
@@ -62,14 +67,11 @@ export function RunTimeline({ detail, streamState }: RunTimelineProps) {
           return (
             <li key={stage.name} className={className}>
               <span className="timeline-dot" />
-              <div>
-                <strong>{stageLabel(stage.name)}</strong>
-                <p>{statusLabel(stage.status)}</p>
-              </div>
+              <strong>{stageLabel(stage.name)}</strong>
             </li>
           );
         })}
-      </ul>
+      </ol>
     </section>
   );
 }

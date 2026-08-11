@@ -62,6 +62,7 @@ export interface WebRunCreated {
 }
 
 export interface StreamMessage {
+  id?: string;
   event: string;
   data: Record<string, unknown>;
 }

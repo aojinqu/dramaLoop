@@ -1,0 +1,22 @@
+[
+  {
+    "role": "targeted_rewrite",
+    "attempt": 1,
+    "model": "deepseek-v4-flash",
+    "stop_reason": "end_turn",
+    "input_tokens": 65,
+    "output_tokens": 13688,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 1920
+  },
+  {
+    "role": "critique_scoring",
+    "attempt": 1,
+    "model": "deepseek-v4-flash",
+    "stop_reason": "end_turn",
+    "input_tokens": 2279,
+    "output_tokens": 2419,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 640
+  }
+]

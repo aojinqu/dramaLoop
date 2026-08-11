@@ -1,0 +1,52 @@
+- id: coastal-weather-ledger-001
+  format: single_story
+  idea: 海岛气象站的年轻观测员发现，师父退休前留下的台风手记与数字档案相互矛盾；渔船已经出港，她必须在证据不完整时决定是否越级发布预警
+  style: [现实悬疑, 职业伦理, 海岛]
+  length: short
+  audience: 喜欢现实题材与强选择困境的短剧用户
+  constraints:
+    - 冲突必须通过气象观测、潮汐或渔业调度的具体细节推进
+    - 师父不是反派，档案矛盾必须来自一个可以理解但造成后果的选择
+    - 结尾回报不能依赖公开打脸或神秘权贵救场
+  max_iterations: 2
+  expected_contracts:
+    - preserve_user_constraints
+    - complete_critique_rewrite
+    - originality_not_template
+  ablation_modes: [baseline, full_harness]
+
+- id: opera-prop-repair-001
+  format: single_story
+  idea: 县剧团道具修复师在封箱前发现祖传戏箱里少了一层夹板，而新来的女演员坚持那块夹板关系到一出停演二十年的戏
+  style: [民俗悬疑, 女性成长, 小城]
+  length: short
+  constraints:
+    - 至少三个关键推进来自戏箱结构、旧戏服或后台规矩
+    - 女演员与修复师不能发展恋爱关系
+    - 真相必须由人物选择重新解释前文细节，不能靠突然出现的录音或监控
+  max_iterations: 2
+  expected_contracts:
+    - preserve_character_relationships
+    - preserve_user_constraints
+    - originality_not_template
+  ablation_modes: [baseline, full_harness]
+
+- id: floodgate-shift-001
+  format: episodic_series
+  idea: 汛期前夜，老泵站唯一会听叶轮异响的值班员突然失联，新来的调度员必须在两集内判断是设备故障、值班事故，还是上游排水规则出了问题
+  style: [职业悬疑, 灾害应急, 群像]
+  length: short
+  episode_count: 2
+  episode_min_words: 350
+  episode_max_words: 550
+  constraints:
+    - 每集使用不同的工程行动推进，不得重复发现新证据后公开对质
+    - 必须持续保留叶轮异响、闸门刻度和上游水位三条信息
+    - 值班员不是幕后反派，结局必须解释他的主动选择
+  enable_episode_critique: true
+  expected_contracts:
+    - carry_unresolved_threads
+    - required_context_recall
+    - evidence_backed_memory
+    - originality_not_template
+  ablation_modes: [baseline, memory_context_budgeted, full_harness]

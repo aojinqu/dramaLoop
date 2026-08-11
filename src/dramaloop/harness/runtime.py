@@ -5,18 +5,17 @@ from typing import Any
 from pydantic import BaseModel
 
 from dramaloop.config import Settings
-from dramaloop.harness.context import build_context_pack, estimate_tokens
-from dramaloop.harness.memory_retriever import retrieve_stage_memories
+from dramaloop.harness.context_planner import HarnessContextPlanner
 from dramaloop.harness.realization import (
     validate_artifact_output,
     validate_structured_contract,
     validate_text_output,
 )
 from dramaloop.harness.run_memory import RunMemoryStore, append_jsonl
-from dramaloop.harness.skills import load_procedural_skills, select_procedural_skills
+from dramaloop.harness.skills import load_procedural_skills
 from dramaloop.harness.stage_graph import get_stage_spec
 from dramaloop.llm.base import LLMClient, LLMInvocationError, TModel
-from dramaloop.schemas.context import ContextItem, ContextPack
+from dramaloop.schemas.context import ContextPack
 from dramaloop.schemas.harness import HARNESS_MODE_LEVEL
 from dramaloop.schemas.input import StoryRequest
 from dramaloop.schemas.realization import RealizationResult
@@ -32,6 +31,7 @@ class HarnessRuntime:
         "skill_trace.jsonl",
         "realization_trace.jsonl",
         "trajectory_trace.jsonl",
+        "usage_trace.jsonl",
     )
 
     def __init__(
@@ -52,15 +52,17 @@ class HarnessRuntime:
             (run_root / filename).touch(exist_ok=True)
         self.memory_store = RunMemoryStore(run_root, run_id, request)
         self.skills = load_procedural_skills(settings.procedural_skills_path)
+        self.context_planner = HarnessContextPlanner(
+            request=request,
+            settings=settings,
+            memory_store=self.memory_store,
+            skills=self.skills,
+            mode_level=self.mode_level,
+        )
 
     @property
     def context_budget(self) -> int:
-        return max(
-            1,
-            int(
-                self.settings.model_context_window_tokens * self.settings.stage_context_budget_ratio
-            ),
-        )
+        return self.context_planner.context_budget
 
     @property
     def realization_enabled(self) -> bool:
@@ -76,119 +78,11 @@ class HarnessRuntime:
             "stage_trace.jsonl",
             {"stage": stage, "event": "entered", "contract": spec.name},
         )
-        candidates: list[ContextItem] = []
-        candidates.append(
-            ContextItem(
-                id=f"invocation-{stage}",
-                kind="invocation_input",
-                content="当前 stage prompt 与直接调用参数",
-                tokens_estimated=estimate_tokens(prompt),
-                priority=120,
-                reason="base prompt and direct stage inputs are required",
-                required=True,
-                evidence_refs=[f"invocation:{stage}"],
-            )
-        )
-        if self.mode_level >= HARNESS_MODE_LEVEL["contract_enabled"]:
-            contract_guidance = [
-                *spec.contract_rules,
-                *(f"禁止：{behavior}" for behavior in spec.forbidden_behaviors),
-            ]
-            if contract_guidance:
-                content = "；".join(contract_guidance)
-                candidates.append(
-                    ContextItem(
-                        id=f"contract-{stage}",
-                        kind="stage_contract",
-                        content=content,
-                        tokens_estimated=estimate_tokens(content),
-                        priority=110,
-                        reason="active stage contract rules",
-                        required=True,
-                    )
-                )
-        request_required = "request" in spec.required_context
-        if request_required or "request" in spec.optional_context:
-            candidates.append(
-                ContextItem(
-                    id="request",
-                    kind="request",
-                    content=self.memory_store.memory.request_summary,
-                    tokens_estimated=estimate_tokens(self.memory_store.memory.request_summary),
-                    priority=100,
-                    reason="stage contract requires the original request",
-                    required=request_required,
-                    evidence_refs=["request.json"],
-                )
-            )
-        for required_name in spec.required_context:
-            if required_name == "request":
-                continue
-            record = self._find_artifact(required_name)
-            if record is not None:
-                candidates.append(
-                    ContextItem(
-                        id=f"required-{required_name}",
-                        kind="artifact",
-                        content=record.content,
-                        tokens_estimated=estimate_tokens(record.content),
-                        priority=100,
-                        reason=f"required by {stage} stage contract",
-                        required=True,
-                        evidence_refs=record.evidence_refs,
-                    )
-                )
-            else:
-                content = f"当前调用参数已直接提供 {required_name}"
-                candidates.append(
-                    ContextItem(
-                        id=f"invocation-{required_name}",
-                        kind="invocation_input",
-                        content=content,
-                        tokens_estimated=estimate_tokens(content),
-                        priority=100,
-                        reason=f"required {required_name} is present in the stage invocation",
-                        required=True,
-                        evidence_refs=[f"invocation:{stage}"],
-                    )
-                )
-
-        selected_skills = []
-        if self.mode_level >= HARNESS_MODE_LEVEL["memory_skill_enabled"]:
-            selected_skills = select_procedural_skills(
-                self.skills,
-                stage=stage,
-                request=self.request,
-                memory=self.memory_store.memory,
-            )
-            candidates.extend(
-                ContextItem(
-                    id=skill.id,
-                    kind="procedural_skill",
-                    content=skill.guidance,
-                    tokens_estimated=estimate_tokens(skill.guidance),
-                    priority=skill.priority,
-                    reason=f"skill trigger matched: {skill.trigger}",
-                )
-                for skill in selected_skills
-            )
-
-        memories = (
-            retrieve_stage_memories(self.memory_store.memory, stage=stage)
-            if self.mode_level >= HARNESS_MODE_LEVEL["memory_skill_enabled"]
-            else []
-        )
-        budget = (
-            self.context_budget
-            if self.mode_level >= HARNESS_MODE_LEVEL["memory_context_budgeted"]
-            else self.settings.model_context_window_tokens
-        )
-        pack = build_context_pack(
-            stage=stage,
-            budget_tokens=budget,
-            candidate_items=candidates,
-            memories=memories,
-        )
+        plan = self.context_planner.build(stage, prompt)
+        pack = plan.pack
+        selected_skills = plan.selected_skills
+        for decision in plan.regulation_decisions:
+            self.record_regulation(decision)
         self._trace(
             "context_trace.jsonl",
             {"stage": stage, "event": "context_planned", **pack.model_dump(mode="json")},
@@ -276,11 +170,28 @@ class HarnessRuntime:
             {"event": "output_realized", **result.model_dump(mode="json", exclude_none=True)},
         )
 
+    def record_provider_usage(self, client: LLMClient) -> None:
+        drain = getattr(client, "drain_usage_records", None)
+        if not callable(drain):
+            return
+        for record in drain():
+            self._trace("usage_trace.jsonl", {"event": "provider_usage", **record})
+
     def record_regulation(self, decision: RegulationDecision) -> None:
         self._trace(
             "trajectory_trace.jsonl",
             {"event": "regulation_decision", **decision.model_dump(mode="json")},
         )
+        degradation_signals = {
+            "rewrite_target_mismatch",
+            "repeated_context_drop",
+            "continuity_recovery_context",
+            "rewrite_limit",
+        }
+        if any(signal.signal_type in degradation_signals for signal in decision.signals):
+            if "trajectory_degradation" not in self.memory_store.memory.failure_patterns:
+                self.memory_store.memory.failure_patterns.append("trajectory_degradation")
+                self.memory_store.persist()
         self.record_decision(
             stage=decision.stage,
             action=decision.action,
@@ -308,8 +219,7 @@ class HarnessRuntime:
         )
 
     def finalize(self, status: str, *, reason: str | None = None) -> None:
-        failure_pattern = "trajectory_degradation" if status == "failed" else None
-        self.memory_store.finalize(status, failure_pattern=failure_pattern)
+        self.memory_store.finalize(status)
         self.record_decision(
             stage="run",
             action="stop",
@@ -320,21 +230,10 @@ class HarnessRuntime:
     def invalidate_episodes_after(self, episode_number: int) -> None:
         self.memory_store.invalidate_episodes_after(episode_number)
 
-    def _find_artifact(self, context_name: str):
-        aliases = {
-            "season": ("season_bible",),
-            "episode_plan": ("episode_plan",),
-            "continuity": ("continuity_state",),
-            "episode_draft": ("episode_",),
-            "episode_critique": ("critique",),
-            "completed_drafts": ("draft_", "episode_"),
-            "rewrite_target": ("critique", "rewrite_plan"),
-        }
-        needles = aliases.get(context_name, (context_name,))
-        for record in reversed(self.memory_store.memory.raw_artifacts):
-            if any(needle in evidence for evidence in record.evidence_refs for needle in needles):
-                return record
-        return None
+    def force_unresolved_threads_for_next_episode(self, failures: list[str]) -> None:
+        if not self.regulation_enabled:
+            return
+        self.record_regulation(self.context_planner.force_unresolved_threads(failures))
 
     def _render_context(self, pack: ContextPack) -> str:
         return "\n".join(
@@ -369,11 +268,13 @@ class HarnessedLLMClient(LLMClient):
                 response_model=response_model,
             )
         except Exception as exc:
+            self.runtime.record_provider_usage(self.client)
             self.runtime.record_realization(
                 RealizationResult(stage=role, status="blocked", issues=[str(exc)])
             )
             self.runtime.fail_stage(role, exc)
             raise
+        self.runtime.record_provider_usage(self.client)
         realization = getattr(self.client, "last_realization_result", None)
         contract_result = (
             validate_structured_contract(role, output)
@@ -393,6 +294,7 @@ class HarnessedLLMClient(LLMClient):
                     response_model=response_model,
                 )
             except Exception as exc:
+                self.runtime.record_provider_usage(self.client)
                 self.runtime.record_realization(
                     RealizationResult(
                         stage=role,
@@ -403,6 +305,7 @@ class HarnessedLLMClient(LLMClient):
                 )
                 self.runtime.fail_stage(role, exc)
                 raise
+            self.runtime.record_provider_usage(self.client)
             retried_contract = validate_structured_contract(role, output)
             if retried_contract.status == "blocked":
                 self.runtime.record_realization(retried_contract)
@@ -426,17 +329,23 @@ class HarnessedLLMClient(LLMClient):
         try:
             output = self.client.generate_text(role=role, prompt=prepared)
         except Exception as exc:
+            self.runtime.record_provider_usage(self.client)
             self.runtime.record_realization(
                 RealizationResult(stage=role, status="blocked", issues=[str(exc)])
             )
             self.runtime.fail_stage(role, exc)
             raise
-        result = (
+        self.runtime.record_provider_usage(self.client)
+        validation = (
             validate_text_output(role, output)
             if self.runtime.realization_enabled
             else RealizationResult(stage=role, status="accepted")
         )
+        provider_result = getattr(self.client, "last_realization_result", None)
+        result = validation if validation.status == "blocked" else provider_result or validation
         self.runtime.record_realization(result)
+        if provider_result is not None:
+            setattr(self.client, "last_realization_result", None)
         if result.status == "blocked":
             error = LLMInvocationError("; ".join(result.issues))
             self.runtime.fail_stage(role, error)

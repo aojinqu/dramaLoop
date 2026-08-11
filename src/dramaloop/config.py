@@ -29,3 +29,10 @@ class Settings(BaseSettings):
     model_context_window_tokens: int = Field(default=32768, ge=1024)
     stage_context_budget_ratio: float = Field(default=0.4, gt=0.0, le=1.0)
     procedural_skills_path: Path = Path("evals/skills/procedural_skills.yaml")
+    enable_originality_plan: bool = False
+    originality_planner_base_url: str | None = None
+    originality_planner_api_key: str | None = None
+    originality_planner_model_name: str = "originality-planner"
+    originality_planner_timeout_seconds: float = Field(default=120.0, gt=0)
+    originality_planner_max_retries: int = Field(default=1, ge=0, le=2)
+    originality_planner_fallback_enabled: bool = True

@@ -31,6 +31,17 @@ def _ratio(numerator: int | float, denominator: int | float, *, empty: float = 1
     return round(numerator / denominator, 4)
 
 
+def _evidence_ref_exists(run_dir: Path, evidence_ref: str) -> bool:
+    if evidence_ref.startswith("invocation:"):
+        return True
+    candidate = (run_dir / evidence_ref).resolve()
+    try:
+        candidate.relative_to(run_dir.resolve())
+    except ValueError:
+        return False
+    return candidate.is_file()
+
+
 def _required_artifacts(manifest: RunManifest, request: StoryRequest) -> list[str]:
     common = [
         "request.json",
@@ -99,7 +110,7 @@ def _expected_stages(run_dir: Path, request: StoryRequest) -> set[str]:
     return expected & registered
 
 
-def evaluate_run_trace(run_dir: Path) -> dict[str, float | int]:
+def evaluate_run_trace(run_dir: Path) -> dict[str, Any]:
     manifest = RunManifest.model_validate_json(
         (run_dir / "run_manifest.json").read_text(encoding="utf-8")
     )
@@ -114,6 +125,7 @@ def evaluate_run_trace(run_dir: Path) -> dict[str, float | int]:
     realization_events = _read_jsonl(run_dir / "realization_trace.jsonl")
     trajectory_events = _read_jsonl(run_dir / "trajectory_trace.jsonl")
     skill_events = _read_jsonl(run_dir / "skill_trace.jsonl")
+    usage_events = _read_jsonl(run_dir / "usage_trace.jsonl")
 
     completed = {event.get("stage") for event in stage_events if event.get("event") == "completed"}
     expected_stages = _expected_stages(run_dir, request)
@@ -149,7 +161,17 @@ def evaluate_run_trace(run_dir: Path) -> dict[str, float | int]:
         for item_id in event.get("memory_refs", [])
         if item_id in memory_ids
     }
-    unsupported = sum(not item.evidence_refs for item in memory.semantic_facts)
+    invalid_evidence_refs = [
+        evidence_ref
+        for item in memory.semantic_facts
+        for evidence_ref in item.evidence_refs
+        if not _evidence_ref_exists(run_dir, evidence_ref)
+    ]
+    unsupported = sum(
+        not item.evidence_refs
+        or any(not _evidence_ref_exists(run_dir, ref) for ref in item.evidence_refs)
+        for item in memory.semantic_facts
+    )
 
     artifact_bytes = sum(
         path.stat().st_size
@@ -165,6 +187,7 @@ def evaluate_run_trace(run_dir: Path) -> dict[str, float | int]:
             "skill_trace.jsonl",
             "realization_trace.jsonl",
             "trajectory_trace.jsonl",
+            "usage_trace.jsonl",
         }
     )
     compressed_chars = sum(
@@ -206,6 +229,13 @@ def evaluate_run_trace(run_dir: Path) -> dict[str, float | int]:
 
     required_artifacts = _required_artifacts(manifest, request)
     existing_artifacts = sum((run_dir / relative).exists() for relative in required_artifacts)
+    regulation_action_counts: dict[str, int] = {}
+    for event in trajectory_events:
+        if event.get("event") != "regulation_decision":
+            continue
+        action = str(event.get("action", "unknown"))
+        regulation_action_counts[action] = regulation_action_counts.get(action, 0) + 1
+
     return {
         "stage_completion_rate": _ratio(
             len(completed & expected_stages),
@@ -225,6 +255,7 @@ def evaluate_run_trace(run_dir: Path) -> dict[str, float | int]:
             len(memory.semantic_facts),
             empty=0.0,
         ),
+        "invalid_evidence_ref_count": len(invalid_evidence_refs),
         "skill_trigger_precision": _ratio(
             valid_skill_selections,
             len(skill_selections),
@@ -248,10 +279,21 @@ def evaluate_run_trace(run_dir: Path) -> dict[str, float | int]:
             len(required_artifacts),
         ),
         "context_tokens": sum(int(item.get("tokens_estimated", 0)) for item in selected_items),
+        "provider_input_tokens": sum(
+            int(event.get("input_tokens", 0)) for event in usage_events
+        ),
+        "provider_output_tokens": sum(
+            int(event.get("output_tokens", 0)) for event in usage_events
+        ),
+        "provider_cache_read_input_tokens": sum(
+            int(event.get("cache_read_input_tokens", 0)) for event in usage_events
+        ),
+        "provider_call_count": len(usage_events),
         "context_budget_overflow_tokens": sum(
             int(event.get("budget_overflow_tokens", 0)) for event in context_events
         ),
         "dropped_context_items": len(dropped_items),
+        "regulation_action_counts": dict(sorted(regulation_action_counts.items())),
         "layer_intervention_count": sum(
             status in {"repaired", "retried", "blocked"} for status in realization_statuses
         )

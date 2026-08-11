@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as api from "../api";
 import App from "../App";
@@ -19,12 +19,12 @@ test("renders the episodic single-page shell contract", () => {
 
   expect(screen.getByRole("heading", { name: /短剧生成工作台/i })).toBeInTheDocument();
   expect(screen.getByLabelText(/idea/i)).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: /开始生成/i })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /开始创作/i })).toBeInTheDocument();
   expect(screen.getByRole("heading", { name: /阶段进度/i })).toBeInTheDocument();
-  expect(screen.getByRole("heading", { name: /实时进度/i })).toBeInTheDocument();
-  expect(screen.getByRole("heading", { name: /生成结果/i })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: /实时动态/i })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: /内容工作区/i })).toBeInTheDocument();
   expect(screen.getByRole("tab", { name: /合并成稿/i })).toBeInTheDocument();
-  expect(screen.getByRole("heading", { name: /artifacts/i, level: 3 })).toBeInTheDocument();
+  expect(screen.getByText(/生成产物/i)).toBeInTheDocument();
 
   const timelineSection = screen.getByRole("heading", { name: /阶段进度/i, level: 2 }).closest("section");
   expect(timelineSection).not.toBeNull();
@@ -35,7 +35,7 @@ test("renders the episodic single-page shell contract", () => {
 test("submitting the launch form does not trigger native navigation", () => {
   render(<RunForm onSubmit={() => {}} />);
 
-  const form = screen.getByRole("button", { name: /开始生成/i }).closest("form");
+  const form = screen.getByRole("button", { name: /开始创作/i }).closest("form");
   expect(form).not.toBeNull();
 
   const submitEvent = fireEvent.submit(form!);
@@ -65,7 +65,7 @@ test("launches an episodic run and renders merged result", async () => {
       max_iterations: 2,
       length: "short",
       format: "episodic_series",
-      episode_count: 12,
+      episode_count: 1,
       episode_min_words: 500,
       episode_max_words: 800,
       delivery_mode: "stream_and_final",
@@ -73,7 +73,7 @@ test("launches an episodic run and renders merged result", async () => {
     stages: [{ name: "episode_generation", status: "completed" }],
     current_stage: null,
     current_episode_number: null,
-    completed_episode_count: 12,
+    completed_episode_count: 1,
     episodes: [
       {
         episode_number: 1,
@@ -87,10 +87,10 @@ test("launches an episodic run and renders merged result", async () => {
     final_story: "# 第1集 婚礼反击\n\n第1集正文",
     overall_score: null,
     rewrite_focus: null,
-    season_summary: "12 集短剧规划完成",
+    season_summary: "单集流程规划完成",
     season_bible: {
       title_candidate: "婚礼反击",
-      series_logline: "12 集短剧规划完成",
+      series_logline: "单集流程规划完成",
       core_conflict: "退婚后的反击",
     },
     episode_plan: {
@@ -109,10 +109,12 @@ test("launches an episodic run and renders merged result", async () => {
 
   await userEvent.clear(screen.getByLabelText(/idea/i));
   await userEvent.type(screen.getByLabelText(/idea/i), "被未婚夫当众退婚后，她转身嫁给了他的死对头");
-  await userEvent.click(screen.getByRole("button", { name: /开始生成/i }));
+  await userEvent.clear(screen.getByLabelText(/episode count/i));
+  await userEvent.type(screen.getByLabelText(/episode count/i), "1");
+  await userEvent.click(screen.getByRole("button", { name: /开始创作/i }));
 
   await waitFor(() => {
-    expect(screen.getByText(/已完成 12 \/ 12 集/)).toBeInTheDocument();
+    expect(screen.getAllByText(/1\s*\/\s*1 集/).length).toBeGreaterThan(0);
   });
 
   await userEvent.click(screen.getByRole("tab", { name: /分集正文/i }));
@@ -136,7 +138,7 @@ test("does not show placeholder story while a real run is still running", async 
 
   await userEvent.clear(screen.getByLabelText(/idea/i));
   await userEvent.type(screen.getByLabelText(/idea/i), "女主复仇短剧设定");
-  await userEvent.click(screen.getByRole("button", { name: /开始生成/i }));
+  await userEvent.click(screen.getByRole("button", { name: /开始创作/i }));
 
   await waitFor(() => {
     expect(screen.getByText(/20260709-running-story/)).toBeInTheDocument();
@@ -169,7 +171,7 @@ test("keeps the timeline header out of streaming after a completed run closes th
       max_iterations: 2,
       length: "short",
       format: "episodic_series",
-      episode_count: 12,
+      episode_count: 1,
       episode_min_words: 500,
       episode_max_words: 800,
       delivery_mode: "stream_and_final",
@@ -177,12 +179,12 @@ test("keeps the timeline header out of streaming after a completed run closes th
     stages: [{ name: "episode_generation", status: "completed" }],
     current_stage: null,
     current_episode_number: null,
-    completed_episode_count: 12,
+    completed_episode_count: 1,
     episodes: [],
     final_story: "最终成稿",
     overall_score: null,
     rewrite_focus: null,
-    season_summary: "12 集短剧规划完成",
+    season_summary: "单集流程规划完成",
     available_artifacts: ["final_story.md"],
   });
 
@@ -196,7 +198,7 @@ test("keeps the timeline header out of streaming after a completed run closes th
 
   await userEvent.clear(screen.getByLabelText(/idea/i));
   await userEvent.type(screen.getByLabelText(/idea/i), "她在婚礼上反杀前任");
-  await userEvent.click(screen.getByRole("button", { name: /开始生成/i }));
+  await userEvent.click(screen.getByRole("button", { name: /开始创作/i }));
 
   const timelineSection = screen.getByRole("heading", { name: /阶段进度/i, level: 2 }).closest("section");
   expect(timelineSection).not.toBeNull();
@@ -206,4 +208,38 @@ test("keeps the timeline header out of streaming after a completed run closes th
   });
 
   expect(within(timelineSection!).queryByText(/^生成中$/i)).not.toBeInTheDocument();
+});
+
+test("keeps a transport outage in reconnecting state and recovers when SSE reopens", async () => {
+  const createRun = vi.mocked(api.createRun);
+  const fetchRunDetail = vi.mocked(api.fetchRunDetail);
+  const connectRunStream = vi.mocked(api.connectRunStream);
+  let streamHandlers: Parameters<typeof api.connectRunStream>[1] | null = null;
+
+  createRun.mockResolvedValue({
+    run_id: "20260709-reconnecting-story",
+    status: "running",
+    stream_url: "/api/runs/20260709-reconnecting-story/stream",
+  });
+  fetchRunDetail.mockRejectedValue(new Error("network unavailable"));
+  connectRunStream.mockImplementation((_runId, handlers) => {
+    streamHandlers = handlers;
+    return { close() {} } as EventSource;
+  });
+
+  render(<App />);
+  await userEvent.type(screen.getByLabelText(/idea/i), "断线后继续生成");
+  await userEvent.click(screen.getByRole("button", { name: /开始创作/i }));
+  await waitFor(() => expect(streamHandlers).not.toBeNull());
+
+  act(() => {
+    streamHandlers!.onError();
+  });
+  await waitFor(() => expect(screen.getByText("重连中")).toBeInTheDocument());
+  expect(screen.queryByText("连接失败")).not.toBeInTheDocument();
+
+  act(() => {
+    streamHandlers!.onOpen?.();
+  });
+  await waitFor(() => expect(screen.getAllByText("生成中").length).toBeGreaterThan(0));
 });

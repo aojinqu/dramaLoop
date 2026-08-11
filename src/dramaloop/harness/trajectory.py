@@ -1,4 +1,5 @@
 from dramaloop.schemas.trajectory import RegulationDecision, TrajectorySignal
+from dramaloop.schemas.context import ContextItem
 
 
 _DIMENSION_TARGETS = {
@@ -9,6 +10,7 @@ _DIMENSION_TARGETS = {
     "short_drama_feel": "reversal_reveal",
     "ending_payoff": "ending_payoff",
     "language_fluency": "prose_fluency",
+    "originality": "originality_revision",
 }
 
 
@@ -18,6 +20,66 @@ class TrajectoryRegulator:
 
     def target_for_dimension(self, dimension: str) -> str:
         return _DIMENSION_TARGETS.get(dimension, dimension)
+
+    def prioritize_repeated_context(
+        self,
+        *,
+        stage: str,
+        items: list[ContextItem],
+        consecutive_drop_counts: dict[str, int],
+    ) -> tuple[list[ContextItem], RegulationDecision | None]:
+        boosted_ids = {
+            item.id for item in items if consecutive_drop_counts.get(item.id, 0) >= 2
+        }
+        if not boosted_ids:
+            return items, None
+        boosted = [
+            item.model_copy(
+                update={
+                    "priority": item.priority + 50,
+                    "reason": f"{item.reason}; priority raised after repeated context drops",
+                }
+            )
+            if item.id in boosted_ids
+            else item
+            for item in items
+        ]
+        signal = TrajectorySignal(
+            stage=stage,
+            signal_type="repeated_context_drop",
+            severity="warning",
+            evidence=[
+                f"{item_id} dropped {consecutive_drop_counts[item_id]} consecutive times"
+                for item_id in sorted(boosted_ids)
+            ],
+            recommended_action="raise priority for repeatedly dropped context",
+        )
+        return boosted, RegulationDecision(
+            stage=stage,
+            action="continue",
+            reason="repeatedly dropped context was reprioritized",
+            signals=[signal],
+        )
+
+    def require_continuity_recovery(
+        self,
+        *,
+        stage: str,
+        failures: list[str],
+    ) -> RegulationDecision:
+        signal = TrajectorySignal(
+            stage=stage,
+            signal_type="continuity_recovery_context",
+            severity="warning",
+            evidence=failures,
+            recommended_action="force unresolved threads into the next episode invocation",
+        )
+        return RegulationDecision(
+            stage=stage,
+            action="continue",
+            reason="continuity failure requires unresolved-thread recovery context",
+            signals=[signal],
+        )
 
     def align_rewrite_target(
         self,

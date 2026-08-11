@@ -1,0 +1,22 @@
+- id: floodgate-shift-live-001
+  format: episodic_series
+  idea: 汛期前夜，老泵站唯一会听叶轮异响的值班员突然失联，新来的调度员必须在两集内判断是设备故障、值班事故，还是上游排水规则出了问题
+  style: [职业悬疑, 灾害应急, 群像]
+  length: short
+  episode_count: 2
+  episode_min_words: 350
+  episode_max_words: 550
+  constraints:
+    - 每集使用不同的工程行动推进，不得重复发现新证据后公开对质
+    - 必须持续保留叶轮异响、闸门刻度和上游水位三条信息
+    - 值班员不是幕后反派，结局必须解释他的主动选择
+  enable_episode_critique: true
+  expected_contracts:
+    - carry_unresolved_threads
+    - required_context_recall
+    - evidence_backed_memory
+    - originality_not_template
+  ablation_modes:
+    - baseline
+    - memory_context_budgeted
+    - full_harness

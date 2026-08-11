@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   cancelRun,
   connectRunStream,
@@ -69,6 +69,10 @@ function buildOptimisticDetail(runId: string, input: RunFormInput): WebRunDetail
 
 export default function App() {
   const streamRef = useRef<EventSource | null>(null);
+  const activeRunRef = useRef<string | null>(null);
+  const lastEventIdRef = useRef<string | null>(null);
+  const detailRequestRef = useRef(0);
+  const launchPendingRef = useRef(false);
   const [runId, setRunId] = useState<string | null>(null);
   const [detail, setDetail] = useState<WebRunDetail | null>(null);
   const [events, setEvents] = useState<StreamMessage[]>([]);
@@ -79,8 +83,12 @@ export default function App() {
   const [liveActivity, setLiveActivity] = useState<string | null>(null);
 
   const refreshDetail = async (id: string) => {
+    const requestId = ++detailRequestRef.current;
     try {
       const nextDetail = await fetchRunDetail(id);
+      if (activeRunRef.current !== id || detailRequestRef.current !== requestId) {
+        return null;
+      }
       setDetail(nextDetail);
       return nextDetail;
     } catch {
@@ -92,6 +100,12 @@ export default function App() {
     streamRef.current?.close();
     const source = connectRunStream(id, {
       onMessage: async (message) => {
+        if (activeRunRef.current !== id) {
+          return;
+        }
+        if (message.id) {
+          lastEventIdRef.current = message.id;
+        }
         setEvents((current) => [...current, message]);
         const activity = liveActivityFromMessage(message);
         if (activity) {
@@ -183,40 +197,72 @@ export default function App() {
             setStreamState("failed");
           }
           source.close();
-          streamRef.current = null;
+          if (streamRef.current === source) {
+            streamRef.current = null;
+          }
         }
       },
       onError: async () => {
+        if (activeRunRef.current !== id) {
+          return;
+        }
         setStreamState("reconnecting");
         const nextDetail = await refreshDetail(id);
+        if (activeRunRef.current !== id) {
+          return;
+        }
         if (!nextDetail) {
-          setStreamState("failed");
           return;
         }
         if (nextDetail.status === "completed" || nextDetail.status === "cancelled") {
           setStreamState("idle");
+          source.close();
+          if (streamRef.current === source) {
+            streamRef.current = null;
+          }
         } else if (nextDetail.status === "failed") {
           setStreamState("failed");
+          source.close();
+          if (streamRef.current === source) {
+            streamRef.current = null;
+          }
         } else if (nextDetail.status === "paused") {
           setStreamState("paused");
         } else {
           setStreamState("streaming");
         }
       },
+      onOpen: () => {
+        if (activeRunRef.current !== id) {
+          return;
+        }
+        setStreamState((current) => (current === "paused" ? current : "streaming"));
+      },
+      afterEventId: lastEventIdRef.current,
     });
     streamRef.current = source;
   };
 
   const handleLaunch = async (input: RunFormInput) => {
+    if (launchPendingRef.current) {
+      return;
+    }
+    launchPendingRef.current = true;
     streamRef.current?.close();
+    streamRef.current = null;
+    activeRunRef.current = null;
+    lastEventIdRef.current = null;
+    detailRequestRef.current += 1;
     setEvents([]);
     setRunId(null);
+    setDetail(null);
     setLaunchError(null);
     setLiveActivity("正在创建任务…");
     setIsSubmitting(true);
 
     try {
       const created = await createRun(input);
+      activeRunRef.current = created.run_id;
       setRunId(created.run_id);
       setStreamState("streaming");
       setDetail(buildOptimisticDetail(created.run_id, input));
@@ -225,9 +271,19 @@ export default function App() {
       setStreamState("failed");
       setLaunchError(error instanceof Error ? error.message : "创建任务失败");
     } finally {
+      launchPendingRef.current = false;
       setIsSubmitting(false);
     }
   };
+
+  useEffect(() => {
+    return () => {
+      activeRunRef.current = null;
+      detailRequestRef.current += 1;
+      streamRef.current?.close();
+      streamRef.current = null;
+    };
+  }, []);
 
   const withControl = async (action: () => Promise<void>) => {
     if (!runId) {
@@ -307,38 +363,51 @@ export default function App() {
   const formBusy = isSubmitting || streamState === "streaming" || streamState === "reconnecting";
 
   return (
-    <div className="page-shell">
-      <aside className="left-panel">
-        <div className="hero-block">
-          <p className="eyebrow">Dramaloop</p>
-          <h1>短剧生成工作台</h1>
-          <p className="hero-copy">
-            配置 prompt、题材与集数；规划完成后可暂停修改，并支持按集重生成。
-          </p>
+    <div className="app-shell">
+      <header className="app-header">
+        <div className="brand">
+          <span className="brand-mark" aria-hidden="true">D</span>
+          <div>
+            <h1>短剧生成工作台</h1>
+            <p>Dramaloop · AI Series Studio</p>
+          </div>
         </div>
-        <RunForm onSubmit={handleLaunch} disabled={formBusy} error={launchError} />
-      </aside>
-      <main className="right-panel">
-        <ControlBar
-          status={detail?.status}
-          controlPhase={detail?.control_phase}
-          busy={controlBusy}
-          onPause={handlePause}
-          onResume={handleResume}
-          onCancel={handleCancel}
-        />
-        <section className="top-grid">
-          <RunTimeline detail={detail} streamState={streamState} />
-          <EventFeed events={events} liveActivity={liveActivity} streamState={streamState} />
-        </section>
-        <ResultPanel
-          detail={detail}
-          runId={runId}
-          onSavePlan={handleSavePlan}
-          onRegenerate={handleRegenerate}
-          controlBusy={controlBusy}
-        />
-      </main>
+        <div className="header-run">
+          <span className={`header-status header-status--${streamState}`}>
+            <span className="header-status-dot" aria-hidden="true" />
+            {detail?.status === "paused" ? "等待确认" : liveActivity || "准备就绪"}
+          </span>
+          {runId ? <code title={runId}>{runId}</code> : null}
+        </div>
+      </header>
+
+      <div className="app-body">
+        <aside className="composer-sidebar">
+          <RunForm onSubmit={handleLaunch} disabled={formBusy} error={launchError} />
+        </aside>
+
+        <main className="workspace">
+          <ControlBar
+            status={detail?.status}
+            controlPhase={detail?.control_phase}
+            busy={controlBusy}
+            onPause={handlePause}
+            onResume={handleResume}
+            onCancel={handleCancel}
+          />
+          <section className="runtime-dock" aria-label="运行监控">
+            <RunTimeline detail={detail} streamState={streamState} />
+            <EventFeed events={events} liveActivity={liveActivity} streamState={streamState} />
+          </section>
+          <ResultPanel
+            detail={detail}
+            runId={runId}
+            onSavePlan={handleSavePlan}
+            onRegenerate={handleRegenerate}
+            controlBusy={controlBusy}
+          />
+        </main>
+      </div>
     </div>
   );
 }

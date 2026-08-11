@@ -14,6 +14,7 @@ def test_premise_prompt_mentions_hook_and_ending_payoff() -> None:
 
     assert "hook" in prompt.lower()
     assert "ending_payoff_plan" in prompt
+    assert "不要默认使用退婚改嫁" in prompt
 
 
 def test_stage_chain_returns_typed_outputs() -> None:
@@ -121,3 +122,5 @@ def test_draft_prompt_requires_continuous_chinese_prose_contract() -> None:
     assert "不要使用 Beat 1/Beat 2、Scene、Act、小标题分幕" in prompt
     assert "不要使用 **SHE**、**HE**、人物名大写标签" in prompt
     assert "以叙事为主，只在关键冲突处穿插少量短对白" in prompt
+    assert "不可替换的故事细节" in prompt
+    assert "禁止复用婚礼退婚后改嫁宿敌" in prompt

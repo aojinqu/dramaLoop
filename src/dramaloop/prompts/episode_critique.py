@@ -12,7 +12,8 @@ EPISODE_CRITIQUE_JSON_SCHEMA = """{
     \"conflict_intensity\": 7.0,
     \"pacing\": 7.0,
     \"short_drama_feel\": 7.0,
-    \"carryover\": 8.0
+    \"carryover\": 8.0,
+    \"originality\": 7.0
   },
   \"weakest_dimensions\": [\"pacing\"],
   \"rewrite_needed\": false,
@@ -33,7 +34,7 @@ def build_episode_critique_prompt(
             *build_json_contract(
                 EPISODE_CRITIQUE_JSON_SCHEMA,
                 extra_rules=[
-                    "dimension_scores 必须且只能包含这些 key：hook_strength、conflict_intensity、pacing、short_drama_feel、carryover。",
+                    "dimension_scores 必须且只能包含这些 key：hook_strength、conflict_intensity、pacing、short_drama_feel、carryover、originality。",
                     "每个维度分数都是 1 到 10 的数字。",
                     "第 1 集的 carryover 可给 8.0（无上一集可承接）。",
                     "当 overall_score < 7.0 或任维 < 6.0 时，rewrite_needed 必须为 true。",
@@ -51,6 +52,7 @@ def build_episode_critique_prompt(
             f"上一集实际收尾信号：{continuity.last_episode_hook}",
             f"当前连续性摘要：{continuity.story_so_far_summary}",
             "请重点评估：短剧节奏、集末钩子、与上一集承接；禁止复述上一集剧情。",
+            "originality 检查本集是否使用独有细节和新的冲突推进方式；若重复“新证据出现—公开打脸”或仅替换人物与地点，不得高于 5 分。",
             "输出 overall_score、dimension_scores、weakest_dimensions、rewrite_needed、rewrite_target、issues。",
             markdown,
         ]
@@ -76,6 +78,7 @@ def build_episode_rewrite_prompt(
             f"本集计划结尾钩子：{episode.hook_ending}",
             f"已知问题：{'；'.join(critique.issues) if critique.issues else '无'}",
             "不要重写整集无关段落；不要复述上一集；保持短剧节奏与集末钩子。",
+            "如果 originality 是弱项，必须用本故事已有的职业、场域、制度、物件或人物选择重建冲突，不能只换台词。",
             "只输出改写后的连续中文正文，不要解释。",
             markdown,
         ]

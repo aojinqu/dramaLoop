@@ -1,0 +1,30 @@
+{
+  "case_count": 1,
+  "success_rate": 1.0,
+  "average_final_score": 7.5,
+  "average_completed_episode_ratio": 1.0,
+  "reports": [
+    {
+      "run_id": "20260714-180442-story",
+      "status": "completed",
+      "format": "episodic_series",
+      "completed_episodes": 2,
+      "total_episodes": 2,
+      "success": true,
+      "continuity_failures": 0,
+      "episode_scores": [
+        7.5,
+        7.5
+      ],
+      "average_episode_score": 7.5,
+      "weakest_dimensions": [
+        "pacing",
+        "pacing"
+      ],
+      "overall_scores": [
+        7.5,
+        7.5
+      ]
+    }
+  ]
+}

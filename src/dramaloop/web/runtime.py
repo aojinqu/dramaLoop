@@ -254,9 +254,16 @@ async def launch_episode_regeneration(
     return WebControlResponse(run_id=run_id, status="running", control_phase="idle")
 
 
-async def stream_run_events(run_id: str, settings: Settings, store: WebRunStore) -> AsyncIterator[str]:
+async def stream_run_events(
+    run_id: str,
+    settings: Settings,
+    store: WebRunStore,
+    *,
+    after_event_id: str | None = None,
+) -> AsyncIterator[str]:
     events_path = settings.runs_dir / run_id / "events.jsonl"
     manifest_path = settings.runs_dir / run_id / "run_manifest.json"
+    after_cursor = _parse_sse_event_id(after_event_id)
     sent = 0
     terminal_stable_polls = 0
 
@@ -266,9 +273,21 @@ async def stream_run_events(run_id: str, settings: Settings, store: WebRunStore)
         run_format = manifest.get("format", "single_story") if manifest else "single_story"
 
         for payload in events[sent:]:
+            raw_event_number = sent + 1
             sent += 1
-            for event_name, event_payload in _translate_event(payload, run_id, run_format):
-                yield f"event: {event_name}\ndata: {json.dumps(event_payload, ensure_ascii=False)}\n\n"
+            translated_events = _translate_event(payload, run_id, run_format)
+            for derived_number, (event_name, event_payload) in enumerate(
+                translated_events,
+                start=1,
+            ):
+                event_cursor = (raw_event_number, derived_number)
+                if event_cursor <= after_cursor:
+                    continue
+                yield (
+                    f"id: {raw_event_number}:{derived_number}\n"
+                    f"event: {event_name}\n"
+                    f"data: {json.dumps(event_payload, ensure_ascii=False)}\n\n"
+                )
 
         if manifest and manifest.get("status") in {"completed", "failed", "cancelled"}:
             final_events, has_partial_tail = _read_json_lines_state(events_path)
@@ -282,11 +301,28 @@ async def stream_run_events(run_id: str, settings: Settings, store: WebRunStore)
                 continue
             hydrated = hydrate_run_detail(run_id, settings, store)
             status = hydrated.status if hydrated is not None else manifest["status"]
-            yield f"event: run_{status}\ndata: {json.dumps({'run_id': run_id, 'status': status}, ensure_ascii=False)}\n\n"
+            terminal_cursor = (len(final_events) + 1, 0)
+            if terminal_cursor > after_cursor:
+                yield (
+                    f"id: {terminal_cursor[0]}:{terminal_cursor[1]}\n"
+                    f"event: run_{status}\n"
+                    f"data: {json.dumps({'run_id': run_id, 'status': status}, ensure_ascii=False)}\n\n"
+                )
             break
 
         terminal_stable_polls = 0
         await asyncio.sleep(0.25)
+
+
+def _parse_sse_event_id(value: str | None) -> tuple[int, int]:
+    if not value:
+        return (0, 0)
+    try:
+        raw_event_number, derived_number = value.split(":", maxsplit=1)
+        cursor = (int(raw_event_number), int(derived_number))
+    except (TypeError, ValueError):
+        return (0, 0)
+    return cursor if cursor >= (0, 0) else (0, 0)
 
 
 
@@ -537,11 +573,13 @@ def _translate_event(payload: dict[str, Any], run_id: str, run_format: str) -> l
             event_name = f"final_assembly_{event}"
         if event_name is not None:
             translated.append((event_name, payload))
-        if artifact is not None:
+        if artifact is not None and not (stage == "run" and event == "completed"):
             artifact_event = "episode_artifact_ready" if stage == "episode_generation" else "artifact_ready"
             translated.append((artifact_event, {"run_id": run_id, "artifact": artifact, "ts": payload.get("ts")}))
         return translated
 
+    if stage == "run" and event in {"completed", "failed", "cancelled"}:
+        return translated
     translated.append((f"stage_{event}", payload))
     if artifact is not None:
         translated.append(("artifact_ready", {"run_id": run_id, "artifact": artifact, "ts": payload.get("ts")}))
@@ -567,7 +605,7 @@ def _read_json_file(path: Path) -> dict[str, Any] | None:
 
 
 def _read_json_lines(path: Path) -> list[dict[str, Any]]:
-    payloads, _has_partial_tail = _read_json_lines_state(path)
+    payloads, _ = _read_json_lines_state(path)
     return payloads
 
 

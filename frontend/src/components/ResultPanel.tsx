@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { runStatusLabel } from "../labels";
 import type { EpisodePlanItem, SeasonBible, WebRunDetail } from "../types";
 
 type ResultTab = "season" | "plan" | "episodes" | "final";
@@ -147,6 +148,7 @@ function PlanView({
               <label className="field">
                 <span>第{item.episode_number}集标题</span>
                 <input
+                  aria-label={`第${item.episode_number}集标题`}
                   value={item.title}
                   onChange={(event) => updateItem(item.episode_number, { title: event.target.value })}
                 />
@@ -154,6 +156,7 @@ function PlanView({
               <label className="field">
                 <span>开场</span>
                 <textarea
+                  aria-label={`第${item.episode_number}集开场`}
                   rows={3}
                   value={item.opening_situation ?? ""}
                   onChange={(event) => updateItem(item.episode_number, { opening_situation: event.target.value })}
@@ -162,6 +165,7 @@ function PlanView({
               <label className="field">
                 <span>核心冲突</span>
                 <textarea
+                  aria-label={`第${item.episode_number}集核心冲突`}
                   rows={2}
                   value={item.core_conflict ?? ""}
                   onChange={(event) => updateItem(item.episode_number, { core_conflict: event.target.value })}
@@ -170,6 +174,7 @@ function PlanView({
               <label className="field">
                 <span>必发生（逗号分隔）</span>
                 <input
+                  aria-label={`第${item.episode_number}集必发生情节`}
                   value={(item.must_happen ?? []).join("，")}
                   onChange={(event) =>
                     updateItem(item.episode_number, {
@@ -184,6 +189,7 @@ function PlanView({
               <label className="field">
                 <span>结尾钩子</span>
                 <textarea
+                  aria-label={`第${item.episode_number}集结尾钩子`}
                   rows={2}
                   value={item.hook_ending ?? ""}
                   onChange={(event) => updateItem(item.episode_number, { hook_ending: event.target.value })}
@@ -192,6 +198,7 @@ function PlanView({
               <label className="field">
                 <span>承接下一集</span>
                 <textarea
+                  aria-label={`第${item.episode_number}集承接下一集`}
                   rows={2}
                   value={item.sets_up_next ?? ""}
                   onChange={(event) => updateItem(item.episode_number, { sets_up_next: event.target.value })}
@@ -227,7 +234,7 @@ function PlanView({
 }
 
 export function ResultPanel({ detail, runId, onSavePlan, onRegenerate, controlBusy = false }: ResultPanelProps) {
-  const episodes = detail?.episodes ?? [];
+  const episodes = useMemo(() => detail?.episodes ?? [], [detail?.episodes]);
   const planItems = detail?.episode_plan?.episodes ?? [];
   const hasFinal = Boolean(detail?.final_story);
   const artifacts = detail?.available_artifacts ?? [];
@@ -283,22 +290,15 @@ export function ResultPanel({ detail, runId, onSavePlan, onRegenerate, controlBu
       <div className="result-main">
         <div className="panel-header">
           <div>
-            <p className="eyebrow">Output</p>
-            <h2>生成结果</h2>
+            <p className="eyebrow">Workspace</p>
+            <h2>内容工作区</h2>
           </div>
-          {runId ? <p className="run-id">{runId}</p> : null}
+          {detail ? (
+            <span className="completion-badge">
+              {detail.completed_episode_count}/{detail.request.episode_count} 集
+            </span>
+          ) : null}
         </div>
-
-        {detail ? (
-          <div className="summary-strip">
-            <strong>
-              已完成 {detail.completed_episode_count} / {detail.request.episode_count} 集
-            </strong>
-            <span>{detail.season_summary || detail.request.idea}</span>
-          </div>
-        ) : (
-          <p className="empty-hint">还没有任务。填写左侧参数后开始生成。</p>
-        )}
 
         <div className="result-tabs" role="tablist" aria-label="结果分区">
           {tabs.map((item) => (
@@ -317,13 +317,21 @@ export function ResultPanel({ detail, runId, onSavePlan, onRegenerate, controlBu
         </div>
 
         <div className="result-body">
-          {tab === "season" ? <SeasonView bible={detail?.season_bible} summary={detail?.season_summary} /> : null}
+          {!detail ? (
+            <div className="workspace-empty">
+              <span className="workspace-empty-mark" aria-hidden="true">✦</span>
+              <h3>从一个故事想法开始</h3>
+              <p>系统会先生成整季与分集规划，确认后再逐集创作。</p>
+            </div>
+          ) : null}
 
-          {tab === "plan" ? (
+          {detail && tab === "season" ? <SeasonView bible={detail.season_bible} summary={detail.season_summary} /> : null}
+
+          {detail && tab === "plan" ? (
             <PlanView items={planItems} editable={editable && planItems.length > 0} busy={controlBusy} onSave={onSavePlan} />
           ) : null}
 
-          {tab === "episodes" ? (
+          {detail && tab === "episodes" ? (
             episodes.length ? (
               <div className="episode-reader">
                 <div className="episode-nav">
@@ -377,7 +385,7 @@ export function ResultPanel({ detail, runId, onSavePlan, onRegenerate, controlBu
             )
           ) : null}
 
-          {tab === "final" ? (
+          {detail && tab === "final" ? (
             hasFinal ? (
               <div className="story-shell final-shell">
                 <p>{detail?.final_story}</p>
@@ -391,16 +399,19 @@ export function ResultPanel({ detail, runId, onSavePlan, onRegenerate, controlBu
 
       <aside className="result-side">
         <div className="summary-card">
-          <h3>任务信息</h3>
+          <div className="side-card-title">
+            <h3>任务概览</h3>
+            {detail ? <span>{runStatusLabel(detail.status)}</span> : null}
+          </div>
           {detail ? (
             <dl>
               <div>
-                <dt>状态</dt>
-                <dd>{detail.status}</dd>
+                <dt>创意</dt>
+                <dd className="summary-idea">{detail.request.idea}</dd>
               </div>
               <div>
-                <dt>控制相位</dt>
-                <dd>{detail.control_phase || "—"}</dd>
+                <dt>进度</dt>
+                <dd>{detail.completed_episode_count} / {detail.request.episode_count} 集</dd>
               </div>
               <div>
                 <dt>题材</dt>
@@ -414,20 +425,25 @@ export function ResultPanel({ detail, runId, onSavePlan, onRegenerate, controlBu
               </div>
             </dl>
           ) : (
-            <p className="empty-hint">任务信息会在启动后显示。</p>
+            <p className="empty-hint">创建任务后显示。</p>
           )}
         </div>
         <div className="summary-card">
-          <h3>Artifacts</h3>
-          {artifacts.length ? (
-            <ul>
-              {artifacts.map((artifact) => (
-                <li key={artifact}>{artifact}</li>
-              ))}
-            </ul>
-          ) : (
-            <p className="empty-hint">产物列表会随阶段推进更新。</p>
-          )}
+          <details className="artifact-details">
+            <summary>
+              <span>生成产物</span>
+              <small>{artifacts.length}</small>
+            </summary>
+            {artifacts.length ? (
+              <ul>
+                {artifacts.map((artifact) => (
+                  <li key={artifact}>{artifact}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="empty-hint">暂无产物</p>
+            )}
+          </details>
         </div>
       </aside>
     </section>

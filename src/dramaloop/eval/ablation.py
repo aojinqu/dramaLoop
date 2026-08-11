@@ -34,6 +34,62 @@ def _completed_ratio(report: dict) -> float:
     return (report.get("completed_episodes") or 0) / total if total else 0.0
 
 
+def _evaluate_expected_contracts(
+    expected_contracts: list[str],
+    *,
+    run_report: dict[str, Any],
+    judge_dimensions: dict[str, float],
+) -> dict[str, dict[str, Any]]:
+    checks = {
+        "preserve_user_constraints": (
+            judge_dimensions["context_fidelity"] >= 7,
+            "judge context_fidelity must be at least 7",
+        ),
+        "preserve_character_relationships": (
+            judge_dimensions["character_consistency"] >= 7,
+            "judge character_consistency must be at least 7",
+        ),
+        "complete_critique_rewrite": (
+            run_report["rewrite_target_alignment"] == 1
+            and run_report["artifact_completion_rate"] == 1,
+            "rewrite target and artifacts must be complete",
+        ),
+        "carry_unresolved_threads": (
+            judge_dimensions["continuity"] >= 7
+            and int(run_report.get("continuity_failures", 0)) == 0,
+            "continuity judge must pass without continuity failures",
+        ),
+        "required_context_recall": (
+            run_report["required_context_recall"] == 1,
+            "all required context must be selected",
+        ),
+        "evidence_backed_memory": (
+            run_report["unsupported_memory_rate"] == 0
+            and run_report["invalid_evidence_ref_count"] == 0,
+            "all semantic memory must reference an existing artifact",
+        ),
+        "rewrite_target_alignment": (
+            run_report["rewrite_target_alignment"] == 1,
+            "rewrite target must match the weakest critique dimension",
+        ),
+        "originality_not_template": (
+            judge_dimensions["originality"] >= 7,
+            "judge originality must be at least 7",
+        ),
+    }
+    results: dict[str, dict[str, Any]] = {}
+    for contract in expected_contracts:
+        if contract not in checks:
+            results[contract] = {
+                "passed": False,
+                "reason": "unknown expected contract",
+            }
+            continue
+        passed, reason = checks[contract]
+        results[contract] = {"passed": passed, "reason": reason}
+    return results
+
+
 def _render_report(report: dict) -> str:
     lines = [
         "# Research Harness Eval Report",
@@ -44,8 +100,26 @@ def _render_report(report: dict) -> str:
         f"- average_judge_score: {report['average_final_score']}",
         f"- pairwise_comparison_count: {len(report['pairwise'])}",
         "",
-        "## Ablation Runs",
+        "## Ablation Summary",
     ]
+    for item in report["ablation_summary"]:
+        lines.append(
+            f"- {item['mode']}: completion_rate={item['completion_rate']:.4f}, "
+            f"judge={item['average_judge_score']:.2f}, "
+            f"originality={item['average_originality_score']:.2f}, "
+            f"contract_pass_rate={item['contract_pass_rate']:.4f}, "
+            f"memory_recall_rate={item['memory_recall_rate']:.4f}, "
+            f"memory_compression_ratio={item['memory_compression_ratio']:.4f}, "
+            f"unsupported_memory_rate={item['unsupported_memory_rate']:.4f}, "
+            f"provider_tokens={item['provider_total_tokens']:.0f}, "
+            f"regulation_actions={item['regulation_action_counts']}"
+        )
+    lines.extend(
+        [
+            "",
+            "## Ablation Runs",
+        ]
+    )
     for item in report["ablation_runs"]:
         lines.append(
             f"- {item['case_id']} / {item['mode']}: success={item['success']}, "
@@ -53,7 +127,19 @@ def _render_report(report: dict) -> str:
             f"tokens={item['average_tokens']}, latency={item['latency_seconds']:.3f}s, "
             f"interventions={item['layer_intervention_count']}"
         )
-    lines.extend(["", "## Pairwise"])
+    pairwise_summary = report["pairwise_summary"]
+    lines.extend(
+        [
+            "",
+            "## Pairwise Summary",
+            f"- comparison_count: {pairwise_summary['comparison_count']}",
+            f"- tie_rate: {pairwise_summary['tie_rate']}",
+            f"- mode_win_rate: {pairwise_summary['mode_win_rate']}",
+            f"- dimension_win_rate: {pairwise_summary['dimension_win_rate']}",
+            "",
+            "## Pairwise",
+        ]
+    )
     for item in report["pairwise"]:
         lines.append(
             f"- {item['case_id']}: {item['mode_a']} vs {item['mode_b']} -> {item['winner']}"
@@ -76,6 +162,12 @@ def _summarize_modes(runs: list[dict]) -> list[dict]:
         if not selected:
             continue
         count = len(selected)
+        regulation_action_counts: dict[str, int] = {}
+        for item in selected:
+            for action, action_count in item["regulation_action_counts"].items():
+                regulation_action_counts[action] = (
+                    regulation_action_counts.get(action, 0) + int(action_count)
+                )
         summaries.append(
             {
                 "mode": mode,
@@ -87,6 +179,15 @@ def _summarize_modes(runs: list[dict]) -> list[dict]:
                 "average_judge_score": round(
                     sum(float(item["judge_score"]) for item in selected) / count,
                     2,
+                ),
+                "average_originality_score": round(
+                    sum(float(item["judge_dimensions"]["originality"]) for item in selected)
+                    / count,
+                    2,
+                ),
+                "contract_pass_rate": round(
+                    sum(float(item["contract_pass_rate"]) for item in selected) / count,
+                    4,
                 ),
                 "continuity_issue_count": sum(
                     int(item.get("continuity_failures", 0)) for item in selected
@@ -107,6 +208,23 @@ def _summarize_modes(runs: list[dict]) -> list[dict]:
                     sum(int(item["average_tokens"]) for item in selected) / count,
                     2,
                 ),
+                "average_provider_input_tokens": round(
+                    sum(int(item["provider_input_tokens"]) for item in selected) / count,
+                    2,
+                ),
+                "average_provider_output_tokens": round(
+                    sum(int(item["provider_output_tokens"]) for item in selected) / count,
+                    2,
+                ),
+                "provider_total_tokens": round(
+                    sum(
+                        int(item["provider_input_tokens"])
+                        + int(item["provider_output_tokens"])
+                        for item in selected
+                    )
+                    / count,
+                    2,
+                ),
                 "average_latency": round(
                     sum(float(item["latency_seconds"]) for item in selected) / count,
                     4,
@@ -114,6 +232,7 @@ def _summarize_modes(runs: list[dict]) -> list[dict]:
                 "layer_intervention_count": sum(
                     int(item["layer_intervention_count"]) for item in selected
                 ),
+                "regulation_action_counts": dict(sorted(regulation_action_counts.items())),
             }
         )
     return summaries
@@ -163,6 +282,7 @@ def run_research_harness_eval(dataset_path: Path, settings: Settings) -> dict:
 
     for case in cases:
         case_id = str(case["id"])
+        expected_contracts = [str(item) for item in case.get("expected_contracts", [])]
         configured_modes = case.get("ablation_modes") or list(HARNESS_MODES)
         unknown_modes = set(configured_modes) - set(HARNESS_MODES)
         if unknown_modes:
@@ -188,9 +308,26 @@ def run_research_harness_eval(dataset_path: Path, settings: Settings) -> dict:
                 "mode": mode,
                 "run_dir": str(result.run_dir),
                 "judge_score": judge.average_score,
+                "judge_dimensions": judge.dimensions.model_dump(),
                 "average_tokens": trace["context_tokens"],
                 "latency_seconds": round(latency, 4),
             }
+            contract_results = _evaluate_expected_contracts(
+                expected_contracts,
+                run_report=run_report,
+                judge_dimensions=judge.dimensions.model_dump(),
+            )
+            run_report["expected_contracts"] = expected_contracts
+            run_report["contract_results"] = contract_results
+            run_report["contract_pass_rate"] = (
+                round(
+                    sum(result["passed"] for result in contract_results.values())
+                    / len(contract_results),
+                    4,
+                )
+                if contract_results
+                else 1.0
+            )
             ablation_runs.append(run_report)
             runs_by_case.setdefault(case_id, []).append(run_report)
 

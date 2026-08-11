@@ -60,11 +60,25 @@ _STAGES = (
         common_failure_modes=["generic polish without fixing weak dimension"],
     ),
     StageSpec(
+        name="originality_mechanism_planning",
+        input_schema="StoryRequest",
+        output_schema="OriginalityPlan",
+        required_context=["request"],
+        artifact_outputs=["originality_plan.json"],
+        contract_rules=[
+            "bind conflict to concrete profession, setting, institution, object, or relationship",
+            "derive reversals from established rules and character choices",
+        ],
+        forbidden_behaviors=["write episode prose or replace schema fields"],
+    ),
+    StageSpec(
         name="season_planning",
         input_schema="StoryRequest",
         output_schema="SeasonBible",
         required_context=["request"],
+        optional_context=["originality_plan"],
         artifact_outputs=["season_bible.json"],
+        contract_rules=["realize the supplied originality plan when one is present"],
     ),
     StageSpec(
         name="episode_plan_generation",
@@ -128,6 +142,7 @@ _FORMAT_STAGES = {
         "final_assembly",
     ),
     "episodic_series": (
+        "originality_mechanism_planning",
         "season_planning",
         "episode_plan_generation",
         "episode_draft_generation",

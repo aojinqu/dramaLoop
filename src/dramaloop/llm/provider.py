@@ -22,6 +22,41 @@ class AnthropicCompatibleLLMClient(LLMClient):
         self._client = Anthropic(**client_kwargs)
         self._model_name = model_name
         self.last_realization_result: RealizationResult | None = None
+        self._usage_records: list[dict[str, Any]] = []
+
+    def _record_usage(self, response: Any, *, role: str, attempt: int) -> None:
+        usage = getattr(response, "usage", None)
+        if usage is None:
+            return
+        records = getattr(self, "_usage_records", [])
+        records.append(
+            {
+                "role": role,
+                "attempt": attempt,
+                "model": getattr(response, "model", self._model_name),
+                "stop_reason": getattr(response, "stop_reason", None),
+                "input_tokens": int(getattr(usage, "input_tokens", 0) or 0),
+                "output_tokens": int(getattr(usage, "output_tokens", 0) or 0),
+                "cache_creation_input_tokens": int(
+                    getattr(usage, "cache_creation_input_tokens", 0) or 0
+                ),
+                "cache_read_input_tokens": int(
+                    getattr(usage, "cache_read_input_tokens", 0) or 0
+                ),
+            }
+        )
+        self._usage_records = records
+
+    def drain_usage_records(self) -> list[dict[str, Any]]:
+        records = list(getattr(self, "_usage_records", []))
+        self._usage_records = []
+        return records
+
+    def _create_message(self, **kwargs: Any) -> Any:
+        if int(kwargs["max_tokens"]) <= 12000:
+            return self._client.messages.create(**kwargs)
+        with self._client.messages.stream(**kwargs) as stream:
+            return stream.get_final_message()
 
     def _normalize_payload(self, role: str, payload: dict[str, Any]) -> dict[str, Any]:
         normalized = dict(payload)
@@ -45,6 +80,44 @@ class AnthropicCompatibleLLMClient(LLMClient):
             )
             normalized.setdefault("tone_notes", normalized.get("tone_notes") or normalized.get("tone") or [])
             normalized.setdefault("hard_constraints", normalized.get("hard_constraints") or normalized.get("constraints") or [])
+        if role == "character_card_generation":
+            characters = normalized.get("characters")
+            if isinstance(characters, list):
+                role_aliases = {
+                    "ally": "supporting",
+                    "mentor": "supporting",
+                    "love_interest": "supporting",
+                    "villain": "antagonist",
+                    "lead": "protagonist",
+                }
+                normalized["characters"] = [
+                    {
+                        **character,
+                        "role": role_aliases.get(
+                            str(character.get("role", "")).lower(),
+                            character.get("role"),
+                        ),
+                    }
+                    if isinstance(character, dict)
+                    else character
+                    for character in characters
+                ]
+        if role == "critique_scoring":
+            target_aliases = {
+                "hook_strength": "opening_hook",
+                "character_consistency": "character_motivation",
+                "conflict_intensity": "mid_conflict_escalation",
+                "pacing": "mid_conflict_escalation",
+                "short_drama_feel": "reversal_reveal",
+                "ending_payoff": "ending_payoff",
+                "language_fluency": "prose_fluency",
+                "originality": "originality_revision",
+            }
+            rewrite_target = str(normalized.get("rewrite_target", "")).lower()
+            normalized["rewrite_target"] = target_aliases.get(
+                rewrite_target,
+                normalized.get("rewrite_target"),
+            )
         if role == "season_planning":
             normalized.setdefault("title_candidate", normalized.get("标题") or normalized.get("title") or normalized.get("片名"))
             normalized.setdefault(
@@ -77,10 +150,28 @@ class AnthropicCompatibleLLMClient(LLMClient):
 
     def _structured_max_tokens(self, role: str) -> int:
         if role == "episode_plan_generation":
-            return 6000
+            return 8000
         if role in {"critique_scoring", "episode_critique_scoring"}:
-            return 3000
-        return 2000
+            return 6000
+        if role in {
+            "premise_refinement",
+            "character_card_generation",
+            "story_outline_generation",
+            "season_planning",
+            "research_judge",
+            "research_pairwise_judge",
+        }:
+            return 6000
+        return 4000
+
+    def _text_max_tokens(self, role: str) -> int:
+        if role == "targeted_rewrite":
+            return 16000
+        if role == "draft_generation":
+            return 8000
+        if role in {"episode_draft_generation", "episode_targeted_rewrite"}:
+            return 6000
+        return 2500
 
     def _parse_structured_response_text(self, text: str) -> Any:
         content = text.strip()
@@ -133,7 +224,7 @@ class AnthropicCompatibleLLMClient(LLMClient):
                 "prompt": prompt,
             },
             {
-                "max_tokens": max(max_tokens, 8000),
+                "max_tokens": max(max_tokens * 2, 8000),
                 "temperature": 0.2,
                 "system": f"你是短剧生成系统中的 {role} 阶段。你上一次的结果未能被解析。你这一次必须只返回完整、闭合、合法的 JSON。",
                 "prompt": prompt + "\n\n补充要求：如果上一次输出被截断，这一次请压缩措辞，但必须保证 JSON 完整闭合。",
@@ -142,13 +233,14 @@ class AnthropicCompatibleLLMClient(LLMClient):
 
         last_error: LLMInvocationError | None = None
         for attempt_index, attempt in enumerate(attempts):
-            response = self._client.messages.create(
+            response = self._create_message(
                 model=self._model_name,
                 max_tokens=attempt["max_tokens"],
                 temperature=attempt["temperature"],
                 system=attempt["system"],
                 messages=[{"role": "user", "content": attempt["prompt"]}],
             )
+            self._record_usage(response, role=role, attempt=attempt_index + 1)
             text = "".join(
                 getattr(block, "text", "")
                 for block in response.content
@@ -192,17 +284,38 @@ class AnthropicCompatibleLLMClient(LLMClient):
         raise last_error
 
     def generate_text(self, *, role: str, prompt: str) -> str:
-        response = self._client.messages.create(
-            model=self._model_name,
-            max_tokens=2500,
-            temperature=0.8,
-            system=f"你是短剧生成系统中的 {role} 阶段。",
-            messages=[{"role": "user", "content": prompt}],
-        )
-        return "".join(
-            getattr(block, "text", "")
-            for block in response.content
-            if getattr(block, "type", None) == "text"
+        max_tokens = self._text_max_tokens(role)
+        retry_tokens = min(max_tokens * 2, 24000)
+        for attempt_index, token_budget in enumerate((max_tokens, retry_tokens)):
+            retry_instruction = (
+                "\n\n上一次输出被截断。请压缩次要描写，但必须从头返回完整正文并完成结尾。"
+                if attempt_index
+                else ""
+            )
+            response = self._create_message(
+                model=self._model_name,
+                max_tokens=token_budget,
+                temperature=0.8 if attempt_index == 0 else 0.6,
+                system=f"你是短剧生成系统中的 {role} 阶段。",
+                messages=[{"role": "user", "content": prompt + retry_instruction}],
+            )
+            self._record_usage(response, role=role, attempt=attempt_index + 1)
+            text = "".join(
+                getattr(block, "text", "")
+                for block in response.content
+                if getattr(block, "type", None) == "text"
+            )
+            if getattr(response, "stop_reason", None) != "max_tokens":
+                self.last_realization_result = RealizationResult(
+                    stage=role,
+                    status="retried" if attempt_index else "accepted",
+                    retry_reason="first text response was truncated"
+                    if attempt_index
+                    else None,
+                )
+                return text
+        raise LLMInvocationError(
+            f"Text response for role={role} was truncated after retry"
         )
 
 
