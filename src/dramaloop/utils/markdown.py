@@ -13,6 +13,7 @@ def _dimension_label(name: str) -> str:
         "short_drama_feel": "Drama Feel",
         "ending_payoff": "Ending",
         "language_fluency": "Fluency",
+        "originality": "Originality",
     }[name]
 
 
@@ -33,11 +34,17 @@ def render_run_summary(
     final_story_path: str,
     stop_reason: str,
 ) -> str:
-    header = "| Version | Hook | Character | Conflict | Pacing | Drama Feel | Ending | Fluency | Overall |"
-    divider = "| --- | --- | --- | --- | --- | --- | --- | --- | --- |"
+    labels = [_dimension_label(name) for name in ordered_dimensions()]
+    header = f"| Version | {' | '.join(labels)} | Overall |"
+    divider = f"| {' | '.join(['---'] * (len(labels) + 2))} |"
     rows = []
     for index, critique in enumerate(critique_history, start=1):
-        values = [str(critique.dimension_scores[name].score) for name in ordered_dimensions()]
+        values = [
+            str(critique.dimension_scores[name].score)
+            if name in critique.dimension_scores
+            else "-"
+            for name in ordered_dimensions()
+        ]
         rows.append(f"| v{index} | {' | '.join(values)} | {critique.overall_score:.2f} |")
 
     weakest_lines = []

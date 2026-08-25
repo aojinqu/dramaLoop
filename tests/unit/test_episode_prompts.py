@@ -2,8 +2,10 @@ from dramaloop.prompts.episode_check import build_episode_check_prompt
 from dramaloop.prompts.episode_draft import build_episode_draft_prompt
 from dramaloop.prompts.episode_plan import build_episode_plan_prompt
 from dramaloop.prompts.season import build_season_prompt
+from dramaloop.llm.mock import build_default_mock_client
 from dramaloop.schemas.continuity import ContinuityState
 from dramaloop.schemas.input import StoryRequest
+from dramaloop.schemas.originality import OriginalityPlan
 from dramaloop.schemas.season import EpisodePlanItem, SeasonBible
 
 
@@ -81,6 +83,26 @@ def test_season_prompt_mentions_twelve_episode_series() -> None:
     assert "500-800字" in prompt
     assert "target_episode_count must equal 12." in prompt
     assert "不要输出 markdown 代码块" in prompt
+
+
+def test_season_prompt_treats_originality_plan_as_strong_constraint() -> None:
+    request = StoryRequest(
+        idea="珠宝设计师发现联名作品署名被侵占",
+        style=["都市行业悬疑"],
+        length="short",
+        format="episodic_series",
+    )
+    plan = build_default_mock_client().generate_structured(
+        role="originality_mechanism_planning",
+        prompt="planner",
+        response_model=OriginalityPlan,
+    )
+
+    prompt = build_season_prompt(request, plan)
+
+    assert "上游已验证的强约束" in prompt
+    assert "唯一原石" in prompt
+    assert '"mechanism_beats"' in prompt
 
 
 def test_episode_plan_prompt_mentions_hook_and_payoff() -> None:

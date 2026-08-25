@@ -10,4 +10,5 @@ def ordered_dimensions() -> list[DimensionName]:
         "short_drama_feel",
         "ending_payoff",
         "language_fluency",
+        "originality",
     ]

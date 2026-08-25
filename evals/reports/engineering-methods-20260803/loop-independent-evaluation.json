@@ -1,0 +1,81 @@
+{
+  "before": {
+    "dimensions": {
+      "hook_strength": 8.0,
+      "conflict_intensity": 8.0,
+      "pacing": 8.0,
+      "short_drama_feel": 9.0,
+      "character_consistency": 8.0,
+      "continuity": 9.0,
+      "context_fidelity": 7.0,
+      "rewrite_effectiveness": 7.0,
+      "originality": 6.0
+    },
+    "rationale": "故事以红毯退婚开场，冲突迅速升级，钩子有力。围绕绣坊字号、参赛资格、抄袭旧案展开多层级对抗，强度充足。三日内推进至决赛，节奏明快，符合短剧爽感。人物动机基本一致：苏晚沉稳坚韧，顾扬谋划深远却动真情，谢仲明作为反派贯穿始终。情节伏笔如照片、磁带、半幅针法均得到回收，连续性佳。因未提供原始用户约束，context_fidelity基于故事内部一致性给出中性偏上评分；无改写记录，按最终结构完整度评价。原创性方面，虽以退婚、协议结婚、反转打脸为骨架，但双面三异绣、外婆与顾扬的师徒关系、磁带证据、捐绣谱等意象赋予一定具体性，尚未完全落入俗套，故给予6分。",
+    "average_score": 7.78
+  },
+  "after": {
+    "dimensions": {
+      "hook_strength": 9.0,
+      "conflict_intensity": 9.0,
+      "pacing": 8.0,
+      "short_drama_feel": 9.0,
+      "character_consistency": 8.0,
+      "continuity": 9.0,
+      "context_fidelity": 8.0,
+      "rewrite_effectiveness": 8.0,
+      "originality": 6.0
+    },
+    "rationale": "开篇婚宴退婚加鉴证文书冲突直接，后续以三日时限推动反转紧凑。双面三异绣、外婆绣针、磁带等意象具有一定具体性，但整体仍沿用退婚嫁娶、证据翻盘、当场打脸的常见短剧骨架，人物情感线略显服务于情节，故 originality 严格扣分。结构完整，前后呼应，角色动机基本一致。",
+    "average_score": 8.22
+  },
+  "pairwise": {
+    "run_a": "before",
+    "run_b": "after",
+    "winner": "B",
+    "dimension_winners": {
+      "short_drama_feel": "B",
+      "character_consistency": "B",
+      "hook_strength": "tie",
+      "rewrite_effectiveness": "B",
+      "originality": "B",
+      "conflict_intensity": "B",
+      "continuity": "B",
+      "context_fidelity": "B",
+      "pacing": "B"
+    },
+    "position_swapped": true,
+    "judgments": [
+      {
+        "winner": "B",
+        "dimension_winners": {
+          "hook_strength": "tie",
+          "conflict_intensity": "B",
+          "pacing": "B",
+          "short_drama_feel": "B",
+          "character_consistency": "B",
+          "continuity": "B",
+          "context_fidelity": "B",
+          "rewrite_effectiveness": "B",
+          "originality": "B"
+        },
+        "rationale": "B 在保留相同开局的基础上，以绣针和棠木绣绷作为贯穿线索，将外婆的证词缝进未完成作品，使证据链更闭合，角色动机更内在，冲突爆发更集中；每处新增细节均与刺绣主题强绑定，意象独特且不可互换，整体完成度和短剧爽感高于 A。"
+      },
+      {
+        "winner": "A",
+        "dimension_winners": {
+          "hook_strength": "tie",
+          "conflict_intensity": "A",
+          "pacing": "A",
+          "short_drama_feel": "A",
+          "character_consistency": "A",
+          "continuity": "A",
+          "context_fidelity": "A",
+          "rewrite_effectiveness": "A",
+          "originality": "A"
+        },
+        "rationale": "A与B的开篇完全相同，因此hook_strength持平。但A在后续情节中增加了外婆绣针暗结、薄绢证词、补全双面三异绣等层层递进的反转，冲突强度更高，伏笔回收完整，角色动机和情感链条更一致；同时A将外婆的绣针与顾扬的绣针形成传承意象，使关键道具不可互换，原创性更强，短剧情绪点和打脸爽感也更浓。B相对平直，证据出现稍显突兀。故整体A胜。"
+      }
+    ]
+  }
+}

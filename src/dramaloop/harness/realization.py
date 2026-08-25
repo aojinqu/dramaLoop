@@ -160,6 +160,7 @@ def validate_structured_contract(stage: str, output: BaseModel) -> RealizationRe
             "short_drama_feel",
             "ending_payoff",
             "language_fluency",
+            "originality",
         }
         missing = required_dimensions - set(payload.get("dimension_scores", {}))
         if missing:
@@ -171,6 +172,7 @@ def validate_structured_contract(stage: str, output: BaseModel) -> RealizationRe
             "pacing",
             "short_drama_feel",
             "carryover",
+            "originality",
         }
         missing = required_dimensions - set(payload.get("dimension_scores", {}))
         if missing:

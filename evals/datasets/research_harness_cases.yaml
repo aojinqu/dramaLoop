@@ -4,7 +4,7 @@
   style: [都市情感, 逆袭]
   length: short
   constraints: [开场十秒内引爆冲突, 结尾完成公开反击]
-  expected_contracts: [preserve_user_constraints, complete_critique_rewrite]
+  expected_contracts: [preserve_user_constraints, complete_critique_rewrite, originality_not_template]
   ablation_modes: &all_modes
     - baseline
     - contract_enabled
@@ -23,7 +23,7 @@
   episode_min_words: 200
   episode_max_words: 400
   constraints: [第二集必须承接第一集收尾, 每集结尾保留下一集钩子]
-  expected_contracts: [preserve_character_relationships, carry_unresolved_threads]
+  expected_contracts: [preserve_character_relationships, carry_unresolved_threads, originality_not_template]
   ablation_modes: *all_modes
 
 - id: constrained-relationship-001
@@ -35,7 +35,7 @@
     - 林夏和周屿始终是互相试探的盟友，不能改成亲属
     - 真相公开前两人不能彻底和解
     - 结尾必须由林夏亲自公布证据
-  expected_contracts: [preserve_character_relationships, preserve_user_constraints]
+  expected_contracts: [preserve_character_relationships, preserve_user_constraints, originality_not_template]
   ablation_modes: *all_modes
 
 - id: long-context-budget-001
@@ -54,7 +54,7 @@
     - 第二集必须回收第一集的保险柜密码
     - 祖母与主角的信任关系不能改变
     - 结尾必须保留遗嘱原件
-  expected_contracts: [required_context_recall, evidence_backed_memory]
+  expected_contracts: [required_context_recall, evidence_backed_memory, originality_not_template]
   ablation_modes: *all_modes
 
 - id: rewrite-effectiveness-001
@@ -64,5 +64,5 @@
   length: short
   max_iterations: 2
   constraints: [改写必须优先修复最低评分维度, 保留证人反口这一核心反转]
-  expected_contracts: [rewrite_target_alignment, preserve_user_constraints]
+  expected_contracts: [rewrite_target_alignment, preserve_user_constraints, originality_not_template]
   ablation_modes: *all_modes

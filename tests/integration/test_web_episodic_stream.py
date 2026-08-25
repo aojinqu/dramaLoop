@@ -16,6 +16,7 @@ def test_stream_endpoint_emits_episode_level_events(tmp_path, monkeypatch) -> No
             "constraints": [],
             "max_iterations": 2,
             "format": "episodic_series",
+            "episode_count": 1,
             "pause_after_plan": False,
         },
     ).json()

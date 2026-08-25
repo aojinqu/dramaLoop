@@ -56,6 +56,26 @@ def test_should_stop_loop_when_gain_is_too_small() -> None:
     assert determine_stop_reason(6.85, critique, settings, iteration=2, max_iterations=3) == "minimum_dimension_threshold_reached"
 
 
+def test_loop_does_not_stop_on_high_overall_when_originality_is_below_floor() -> None:
+    settings = Settings()
+    critique = _critique(
+        {
+            "hook_strength": 9,
+            "character_consistency": 8,
+            "conflict_intensity": 9,
+            "pacing": 8,
+            "short_drama_feel": 9,
+            "ending_payoff": 8,
+            "language_fluency": 8,
+            "originality": 4,
+        },
+        target="originality_revision",
+    )
+
+    assert critique.overall_score >= settings.target_threshold
+    assert should_continue_loop(None, critique, settings, iteration=1, max_iterations=2)
+
+
 def test_render_run_summary_includes_score_table_and_rewrite_notes() -> None:
     request = StoryRequest(idea="她被退婚后闪婚死对头", style=["都市情感"], length="short")
     critique_history = [
@@ -101,7 +121,7 @@ def test_render_run_summary_includes_score_table_and_rewrite_notes() -> None:
         stop_reason="target_threshold_reached",
     )
 
-    assert "| Version | Hook | Character | Conflict | Pacing | Drama Feel | Ending | Fluency | Overall |" in markdown
+    assert "| Version | Hook | Character | Conflict | Pacing | Drama Feel | Ending | Fluency | Originality | Overall |" in markdown
     assert "补强结尾反杀" in markdown
     assert "final_story.md" in markdown
     assert "Pacing -> ok" in markdown

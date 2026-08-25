@@ -1,0 +1,118 @@
+{
+  "case_count": 5,
+  "success_rate": 1.0,
+  "average_final_score": 7.7,
+  "average_completed_episode_ratio": 1.0,
+  "reports": [
+    {
+      "run_id": "20260714-181222-story",
+      "status": "completed",
+      "format": "episodic_series",
+      "completed_episodes": 2,
+      "total_episodes": 2,
+      "success": true,
+      "continuity_failures": 0,
+      "episode_scores": [
+        7.5,
+        7.0
+      ],
+      "average_episode_score": 7.25,
+      "weakest_dimensions": [
+        "conflict_intensity",
+        "pacing"
+      ],
+      "overall_scores": [
+        7.5,
+        7.0
+      ]
+    },
+    {
+      "run_id": "20260714-181314-story",
+      "status": "completed",
+      "format": "episodic_series",
+      "completed_episodes": 2,
+      "total_episodes": 2,
+      "success": true,
+      "continuity_failures": 0,
+      "episode_scores": [
+        8.0,
+        7.6
+      ],
+      "average_episode_score": 7.8,
+      "weakest_dimensions": [
+        "hook_strength",
+        "pacing"
+      ],
+      "overall_scores": [
+        8.0,
+        7.6
+      ]
+    },
+    {
+      "run_id": "20260714-181356-story",
+      "status": "completed",
+      "format": "episodic_series",
+      "completed_episodes": 2,
+      "total_episodes": 2,
+      "success": true,
+      "continuity_failures": 0,
+      "episode_scores": [
+        7.8,
+        7.5
+      ],
+      "average_episode_score": 7.65,
+      "weakest_dimensions": [
+        "pacing",
+        "hook_strength"
+      ],
+      "overall_scores": [
+        7.8,
+        7.5
+      ]
+    },
+    {
+      "run_id": "20260714-181451-story",
+      "status": "completed",
+      "format": "episodic_series",
+      "completed_episodes": 2,
+      "total_episodes": 2,
+      "success": true,
+      "continuity_failures": 0,
+      "episode_scores": [
+        7.5,
+        8.6
+      ],
+      "average_episode_score": 8.05,
+      "weakest_dimensions": [
+        "pacing",
+        "hook_strength"
+      ],
+      "overall_scores": [
+        7.5,
+        8.6
+      ]
+    },
+    {
+      "run_id": "20260714-181552-story",
+      "status": "completed",
+      "format": "episodic_series",
+      "completed_episodes": 2,
+      "total_episodes": 2,
+      "success": true,
+      "continuity_failures": 0,
+      "episode_scores": [
+        7.5,
+        8.0
+      ],
+      "average_episode_score": 7.75,
+      "weakest_dimensions": [
+        "conflict_intensity",
+        "conflict_intensity"
+      ],
+      "overall_scores": [
+        7.5,
+        8.0
+      ]
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "run_a": "20260803-201934-story",
+  "run_b": "before",
+  "winner": "B",
+  "dimension_winners": {
+    "continuity": "B",
+    "rewrite_effectiveness": "B",
+    "context_fidelity": "B",
+    "conflict_intensity": "tie",
+    "short_drama_feel": "tie",
+    "character_consistency": "tie",
+    "pacing": "tie",
+    "hook_strength": "tie",
+    "originality": "B"
+  },
+  "position_swapped": true,
+  "judgments": [
+    {
+      "winner": "B",
+      "dimension_winners": {
+        "hook_strength": "A",
+        "conflict_intensity": "A",
+        "pacing": "A",
+        "short_drama_feel": "A",
+        "character_consistency": "tie",
+        "continuity": "B",
+        "context_fidelity": "B",
+        "rewrite_effectiveness": "B",
+        "originality": "B"
+      },
+      "rationale": "B 在原创性上显著占优：其冲突围绕苏绣行会规则、绣谱传承、双面三异绣等具体行业机制展开，关键意象（绣谱、照片、磁带、手稿）彼此勾连且不可互换；A 则是常见的退婚改嫁豪门、设计抄袭、商战直播翻盘套式，虽冲突更密集爽感更强，但套路化明显。B 在人物关系（外婆与顾扬的师徒伏笔）、情节连续性（夹层手稿、磁带录音回收）及行业语境真实性上也更胜一筹。A 仅在开篇钩子、冲突烈度、节奏和短剧爽感上占优。综合原创性优先原则，判定 B 为整体 winner。"
+    },
+    {
+      "winner": "A",
+      "dimension_winners": {
+        "hook_strength": "A",
+        "conflict_intensity": "A",
+        "pacing": "A",
+        "short_drama_feel": "A",
+        "character_consistency": "A",
+        "continuity": "A",
+        "context_fidelity": "A",
+        "rewrite_effectiveness": "A",
+        "originality": "A"
+      },
+      "rationale": "A以刺绣行业为背景，冲突围绕绣谱真伪、抄袭旧案与行会公证展开，机制具体且不可互换：双面三异绣、半幅针法、旧磁带录音等意象紧密咬合，人物关系（外婆与顾扬的师徒遗缘、谢家的历史抄袭）使反转有根有据。B虽在节奏和情绪渲染上合格，但整体是常见的退婚改嫁+豪门打脸+直播翻盘模板，核心冲突（设计抄袭、商业报复、绑架）高度套路化，人物关系与关键道具可随意替换。A在原创性、冲突层次和行业细节上全面胜出，因此整体winner为A。"
+    }
+  ]
+}

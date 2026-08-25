@@ -25,34 +25,33 @@ export function EventFeed({ events, liveActivity = null, streamState = "idle" }:
   }, [lines.length, liveActivity]);
 
   return (
-    <section className="panel event-panel">
-      <div className="panel-header">
-        <div>
-          <p className="eyebrow">Streaming</p>
-          <h2>实时进度</h2>
+    <section className="runtime-card event-panel">
+      <div className="runtime-card-header">
+        <div className="runtime-title">
+          <p className="eyebrow">Activity</p>
+          <h2>实时动态</h2>
         </div>
-        <p>{events.length ? `${events.length} 条` : "等待事件"}</p>
+        <span className="event-count">{events.length || 0}</span>
       </div>
 
-      {liveActivity || isLive ? (
-        <div className={`live-activity ${isLive ? "is-live" : ""}`}>
-          {isLive ? <span className="live-dot" aria-hidden="true" /> : null}
-          <span>{liveActivity || "正在接收进度事件…"}</span>
-        </div>
-      ) : null}
+      <div className={`live-activity ${isLive ? "is-live" : ""}`}>
+        {isLive ? <span className="live-dot" aria-hidden="true" /> : <span className="live-dot is-idle" aria-hidden="true" />}
+        <span>{liveActivity || "等待创建任务"}</span>
+      </div>
 
-      {lines.length === 0 ? (
-        <p className="empty-hint">生成开始后，这里会实时滚动输出阶段与分集进度。</p>
-      ) : (
-        <ul className="event-list progress-log" ref={listRef}>
-          {lines.map((line) => (
-            <li key={line.id} className={`progress-line progress-line--${line.tone}`}>
-              <time>{line.at}</time>
-              <span>{line.text}</span>
-            </li>
-          ))}
-        </ul>
-      )}
+      {lines.length ? (
+        <details className="event-details">
+          <summary>查看完整日志</summary>
+          <ul className="event-list progress-log" ref={listRef}>
+            {lines.map((line) => (
+              <li key={line.id} className={`progress-line progress-line--${line.tone}`}>
+                <time>{line.at}</time>
+                <span>{line.text}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
     </section>
   );
 }

@@ -16,6 +16,9 @@ Dramaloop 是一个以 staged agent harness 和 critique-rewrite loop 为核心�
 
 - 应用层：`src/dramaloop/`、`tests/`、`runs/`、`evals/`、`examples/`
 - 操作层：`project/spec/`、`project/tasks/`、`project/workspace/`
+- 工程架构、可靠性与评测设计：`docs/engineering-overview.md`
+- 真实工程方法实验与失败复盘：`docs/engineering-methods-evaluation.md`
+- 小说 SFT、偏好训练与原创性提升调研：`docs/originality-improvement-research.md`
 
 ## 快速开始
 
@@ -82,7 +85,7 @@ uv run dramaloop web --host 127.0.0.1 --port 8000
 
 ```bash
 uv run dramaloop run --input examples/inputs/minimal_story.yaml
-uv run dramaloop run --idea "她被退婚后反手嫁给宿敌" --style 都市情感 --format episodic_series --episode-count 12
+uv run dramaloop run --idea "汛期泵站值班员失联，新调度员从叶轮异响中发现旧排水规则的漏洞" --style 职业悬疑 --format episodic_series --episode-count 2
 uv run dramaloop inspect runs/<run_id>
 uv run dramaloop eval --dataset evals/datasets/mvp_cases.yaml
 DRAMALOOP_PROVIDER=mock uv run dramaloop eval --dataset evals/datasets/episodic_mvp_cases.yaml
@@ -138,6 +141,7 @@ stage context budget 默认使用模型上下文窗口的 40%，可通过
 - `skill_trace.jsonl`
 - `realization_trace.jsonl`
 - `trajectory_trace.jsonl`
+- `usage_trace.jsonl`
 
 分集模式还会写出：
 - `season_bible.json`

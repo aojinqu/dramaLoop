@@ -8,6 +8,7 @@ from dramaloop.prompts.episode_critique import (
 )
 from dramaloop.prompts.episode_draft import build_episode_draft_prompt
 from dramaloop.prompts.episode_plan import build_episode_plan_prompt
+from dramaloop.prompts.originality import build_originality_plan_prompt
 from dramaloop.prompts.outline import build_outline_prompt
 from dramaloop.prompts.premise import build_premise_prompt
 from dramaloop.prompts.rewrite import build_rewrite_prompt
@@ -17,6 +18,7 @@ from dramaloop.schemas.continuity import ContinuityState
 from dramaloop.schemas.critique import CritiqueArtifact
 from dramaloop.schemas.episode_critique import EpisodeCritiqueArtifact
 from dramaloop.schemas.input import StoryRequest
+from dramaloop.schemas.originality import OriginalityPlan
 from dramaloop.schemas.outline import OutlineArtifact
 from dramaloop.schemas.premise import PremiseArtifact
 from dramaloop.schemas.rewrite import RewriteArtifact
@@ -31,10 +33,25 @@ def run_premise_stage(client: LLMClient, request: StoryRequest) -> PremiseArtifa
     )
 
 
-def run_season_stage(client: LLMClient, request: StoryRequest) -> SeasonBible:
+def run_originality_plan_stage(
+    client: LLMClient,
+    request: StoryRequest,
+) -> OriginalityPlan:
+    return client.generate_structured(
+        role="originality_mechanism_planning",
+        prompt=build_originality_plan_prompt(request),
+        response_model=OriginalityPlan,
+    )
+
+
+def run_season_stage(
+    client: LLMClient,
+    request: StoryRequest,
+    originality_plan: OriginalityPlan | None = None,
+) -> SeasonBible:
     return client.generate_structured(
         role="season_planning",
-        prompt=build_season_prompt(request),
+        prompt=build_season_prompt(request, originality_plan),
         response_model=SeasonBible,
     )
 
@@ -47,7 +64,9 @@ def run_character_stage(client: LLMClient, premise: PremiseArtifact) -> Characte
     )
 
 
-def run_outline_stage(client: LLMClient, premise: PremiseArtifact, characters: CharacterArtifact) -> OutlineArtifact:
+def run_outline_stage(
+    client: LLMClient, premise: PremiseArtifact, characters: CharacterArtifact
+) -> OutlineArtifact:
     return client.generate_structured(
         role="story_outline_generation",
         prompt=build_outline_prompt(premise, characters),
@@ -75,7 +94,12 @@ def run_episode_plan_stage(
     )
 
 
-def run_draft_stage(client: LLMClient, premise: PremiseArtifact, characters: CharacterArtifact, outline: OutlineArtifact) -> str:
+def run_draft_stage(
+    client: LLMClient,
+    premise: PremiseArtifact,
+    characters: CharacterArtifact,
+    outline: OutlineArtifact,
+) -> str:
     return client.generate_text(
         role="draft_generation",
         prompt=build_draft_prompt(premise, characters, outline),

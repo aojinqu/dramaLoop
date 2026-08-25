@@ -59,13 +59,107 @@ DEFAULT_STRUCTURED_OUTPUTS: dict[
     "story_outline_generation": [
         {
             "beats": [
-                {"beat_id": "b1", "label": "hook", "purpose": "抓人", "summary": "婚礼被退婚", "tension_level": 9, "payoff_dependency": None},
-                {"beat_id": "b2", "label": "inciting", "purpose": "冲突", "summary": "她当场改嫁死对头", "tension_level": 9, "payoff_dependency": None},
-                {"beat_id": "b3", "label": "escalation", "purpose": "升级", "summary": "前任家族全线封杀", "tension_level": 8, "payoff_dependency": "b5"},
-                {"beat_id": "b4", "label": "reveal", "purpose": "反转", "summary": "新婚丈夫早就布局复仇", "tension_level": 9, "payoff_dependency": "b5"},
-                {"beat_id": "b5", "label": "payoff", "purpose": "回报", "summary": "前任众叛亲离", "tension_level": 10, "payoff_dependency": None},
+                {
+                    "beat_id": "b1",
+                    "label": "hook",
+                    "purpose": "抓人",
+                    "summary": "婚礼被退婚",
+                    "tension_level": 9,
+                    "payoff_dependency": None,
+                },
+                {
+                    "beat_id": "b2",
+                    "label": "inciting",
+                    "purpose": "冲突",
+                    "summary": "她当场改嫁死对头",
+                    "tension_level": 9,
+                    "payoff_dependency": None,
+                },
+                {
+                    "beat_id": "b3",
+                    "label": "escalation",
+                    "purpose": "升级",
+                    "summary": "前任家族全线封杀",
+                    "tension_level": 8,
+                    "payoff_dependency": "b5",
+                },
+                {
+                    "beat_id": "b4",
+                    "label": "reveal",
+                    "purpose": "反转",
+                    "summary": "新婚丈夫早就布局复仇",
+                    "tension_level": 9,
+                    "payoff_dependency": "b5",
+                },
+                {
+                    "beat_id": "b5",
+                    "label": "payoff",
+                    "purpose": "回报",
+                    "summary": "前任众叛亲离",
+                    "tension_level": 10,
+                    "payoff_dependency": None,
+                },
             ],
             "ending_type": "revenge payoff",
+        }
+    ],
+    "originality_mechanism_planning": [
+        {
+            "idea": "珠宝设计师在婚礼违约后，必须用被锁定的联名原石证明设计署名被侵占。",
+            "genre": "都市行业悬疑",
+            "anti_cliche_constraints": [
+                "不得依赖突然身份揭露翻盘",
+                "反转必须来自设计权规则和人物选择",
+            ],
+            "novelty_mechanism": {
+                "core_engine": "联名珠宝的署名权随原石保管链和公开修改记录共同转移。",
+                "conflict_source": "婚礼、品牌联名制度和唯一原石的保管关系把感情背叛变成职业归属争夺。",
+                "reversal_logic": "主角每次公开修改设计都会留下不可撤销的署名证据，也暴露下一步行动。",
+                "irreplaceable_details": [
+                    "珠宝设计师必须履行的职业职责",
+                    "婚礼展柜场域中的唯一原石",
+                    "品牌评审制度留下的修改记录",
+                    "师徒关系共同保管的蜡封样稿",
+                ],
+                "why_it_cannot_be_swapped": "若移除珠宝行业、唯一原石或署名制度，主角无法通过职业选择夺回作品归属。",
+            },
+            "world_rules": [
+                "联名作品只有原石保管链与修改记录一致时才能确认最终署名。",
+                "评审会一旦公开设计版本，任何撤回都会永久失去该版本的商业授权。",
+            ],
+            "character_arcs": [
+                {
+                    "name": "林晚",
+                    "role": "主角",
+                    "desire": "夺回被侵占的设计署名和职业信誉",
+                    "blind_spot": "把独自承担风险误认为职业独立",
+                    "choice_pressure": "必须在保住商业授权与公开师门违规之间选择",
+                    "arc_payoff": "学会让盟友共同承担证据公开后的职业代价",
+                }
+            ],
+            "mechanism_beats": [
+                {
+                    "stage": "首次不可逆选择",
+                    "pressure": "前任要求她撤回婚礼展柜中的联名原石",
+                    "choice": "她当众封存原石并申请署名复核",
+                    "consequence": "品牌冻结双方授权，婚礼纠纷升级为职业审查",
+                    "next_pressure": "她必须在评审会前补齐原石保管链",
+                },
+                {
+                    "stage": "规则暴露",
+                    "pressure": "保管链缺少师父签署的一环",
+                    "choice": "她公开蜡封样稿证明修改记录",
+                    "consequence": "师门违规被同步暴露，她失去内部庇护",
+                    "next_pressure": "她必须让盟友承担公开作证的商业损失",
+                },
+                {
+                    "stage": "机制回收",
+                    "pressure": "评审会要求她撤诉换回授权",
+                    "choice": "她放弃旧授权并发布可验证的新版本",
+                    "consequence": "侵占者无法继续使用原石，署名争议按规则逆转",
+                    "next_pressure": "她要重建品牌与合作关系",
+                },
+            ],
         }
     ],
     "season_planning": [
@@ -196,33 +290,123 @@ DEFAULT_STRUCTURED_OUTPUTS: dict[
     "critique_scoring": [
         {
             "dimension_scores": {
-                "hook_strength": {"score": 6, "reason": "开头抓人但还不够猛", "evidence": "婚礼羞辱出现得快，但反击力度还可以更锋利", "improvement_advice": "让开场台词更有爆点"},
-                "character_consistency": {"score": 7, "reason": "人物动机清晰", "evidence": "林晚始终围绕尊严和反击行动", "improvement_advice": "增加一处更强的内心决断"},
-                "conflict_intensity": {"score": 7, "reason": "冲突已建立", "evidence": "退婚与改嫁形成正面对撞", "improvement_advice": "中段继续抬高外部压力"},
-                "pacing": {"score": 6, "reason": "节奏还算顺", "evidence": "从婚礼到反击推进较快，但中段略短", "improvement_advice": "补一小段升级桥接"},
-                "short_drama_feel": {"score": 7, "reason": "短剧感已出现", "evidence": "钩子、羞辱、反击都在位", "improvement_advice": "把结尾打脸拉得更狠"},
-                "ending_payoff": {"score": 5, "reason": "结尾回报不足", "evidence": "目前只有反击起手，没有形成完整终局反杀", "improvement_advice": "增加一段更明确的公开反杀场景"},
-                "language_fluency": {"score": 7, "reason": "语言基本流畅", "evidence": "句式简洁，易读", "improvement_advice": "增加一句更利落的收尾台词"},
+                "hook_strength": {
+                    "score": 6,
+                    "reason": "开头抓人但还不够猛",
+                    "evidence": "婚礼羞辱出现得快，但反击力度还可以更锋利",
+                    "improvement_advice": "让开场台词更有爆点",
+                },
+                "character_consistency": {
+                    "score": 7,
+                    "reason": "人物动机清晰",
+                    "evidence": "林晚始终围绕尊严和反击行动",
+                    "improvement_advice": "增加一处更强的内心决断",
+                },
+                "conflict_intensity": {
+                    "score": 7,
+                    "reason": "冲突已建立",
+                    "evidence": "退婚与改嫁形成正面对撞",
+                    "improvement_advice": "中段继续抬高外部压力",
+                },
+                "pacing": {
+                    "score": 6,
+                    "reason": "节奏还算顺",
+                    "evidence": "从婚礼到反击推进较快，但中段略短",
+                    "improvement_advice": "补一小段升级桥接",
+                },
+                "short_drama_feel": {
+                    "score": 7,
+                    "reason": "短剧感已出现",
+                    "evidence": "钩子、羞辱、反击都在位",
+                    "improvement_advice": "把结尾打脸拉得更狠",
+                },
+                "ending_payoff": {
+                    "score": 5,
+                    "reason": "结尾回报不足",
+                    "evidence": "目前只有反击起手，没有形成完整终局反杀",
+                    "improvement_advice": "增加一段更明确的公开反杀场景",
+                },
+                "language_fluency": {
+                    "score": 7,
+                    "reason": "语言基本流畅",
+                    "evidence": "句式简洁，易读",
+                    "improvement_advice": "增加一句更利落的收尾台词",
+                },
+                "originality": {
+                    "score": 4,
+                    "reason": "退婚改嫁与公开反击较模板化",
+                    "evidence": "核心推进依赖常见婚礼羞辱和大佬救场",
+                    "improvement_advice": "用角色职业与具体场域重建冲突因果",
+                },
             },
             "overall_score": 6.43,
             "weakest_dimensions": ["ending_payoff", "hook_strength"],
             "rewrite_target": "ending_payoff",
-            "rewrite_plan": {"scope": "结尾两段", "must_fix": ["增加终局反杀", "补强公开羞辱的回报感"], "keep": ["婚礼开头", "改嫁钩子"]},
+            "rewrite_plan": {
+                "scope": "结尾两段",
+                "must_fix": ["增加终局反杀", "补强公开羞辱的回报感"],
+                "keep": ["婚礼开头", "改嫁钩子"],
+            },
         },
         {
             "dimension_scores": {
-                "hook_strength": {"score": 8, "reason": "开头明显更抓人", "evidence": "婚礼羞辱后立刻接改嫁动作", "improvement_advice": "继续保持开场锋利度"},
-                "character_consistency": {"score": 7, "reason": "人物动机稳定", "evidence": "林晚的尊严诉求始终一致", "improvement_advice": "后续可再加一处心理描写"},
-                "conflict_intensity": {"score": 8, "reason": "冲突强度够高", "evidence": "公开直播反杀抬升了冲突级别", "improvement_advice": "后续可以补更强的对手反扑"},
-                "pacing": {"score": 7, "reason": "节奏更完整", "evidence": "开头-反击-结尾回报形成闭环", "improvement_advice": "中段桥接仍可略压缩"},
-                "short_drama_feel": {"score": 8, "reason": "短剧感明显", "evidence": "羞辱、闪婚、直播反杀都很短剧", "improvement_advice": "后续可增加一层反转"},
-                "ending_payoff": {"score": 7, "reason": "结尾已有明确回报", "evidence": "林晚在公开场合完成体面反击", "improvement_advice": "结尾再加一击会更爽"},
-                "language_fluency": {"score": 7, "reason": "语言顺畅", "evidence": "关键台词简洁有力", "improvement_advice": "保持句式利落"},
+                "hook_strength": {
+                    "score": 8,
+                    "reason": "开头明显更抓人",
+                    "evidence": "婚礼羞辱后立刻接改嫁动作",
+                    "improvement_advice": "继续保持开场锋利度",
+                },
+                "character_consistency": {
+                    "score": 7,
+                    "reason": "人物动机稳定",
+                    "evidence": "林晚的尊严诉求始终一致",
+                    "improvement_advice": "后续可再加一处心理描写",
+                },
+                "conflict_intensity": {
+                    "score": 8,
+                    "reason": "冲突强度够高",
+                    "evidence": "公开直播反杀抬升了冲突级别",
+                    "improvement_advice": "后续可以补更强的对手反扑",
+                },
+                "pacing": {
+                    "score": 7,
+                    "reason": "节奏更完整",
+                    "evidence": "开头-反击-结尾回报形成闭环",
+                    "improvement_advice": "中段桥接仍可略压缩",
+                },
+                "short_drama_feel": {
+                    "score": 8,
+                    "reason": "短剧感明显",
+                    "evidence": "羞辱、闪婚、直播反杀都很短剧",
+                    "improvement_advice": "后续可增加一层反转",
+                },
+                "ending_payoff": {
+                    "score": 7,
+                    "reason": "结尾已有明确回报",
+                    "evidence": "林晚在公开场合完成体面反击",
+                    "improvement_advice": "结尾再加一击会更爽",
+                },
+                "language_fluency": {
+                    "score": 7,
+                    "reason": "语言顺畅",
+                    "evidence": "关键台词简洁有力",
+                    "improvement_advice": "保持句式利落",
+                },
+                "originality": {
+                    "score": 6,
+                    "reason": "增加了部分具体行动",
+                    "evidence": "反击过程比初稿更具体",
+                    "improvement_advice": "继续减少通用打脸桥段",
+                },
             },
             "overall_score": 7.43,
             "weakest_dimensions": ["pacing"],
             "rewrite_target": "opening_hook",
-            "rewrite_plan": {"scope": "开头一段", "must_fix": ["让第一句更锋利"], "keep": ["结尾直播反杀", "核心冲突关系"]},
+            "rewrite_plan": {
+                "scope": "开头一段",
+                "must_fix": ["让第一句更锋利"],
+                "keep": ["结尾直播反杀", "核心冲突关系"],
+            },
         },
     ],
     "episode_critique_scoring": [
@@ -235,6 +419,7 @@ DEFAULT_STRUCTURED_OUTPUTS: dict[
                 "pacing": 5.5,
                 "short_drama_feel": 6.0,
                 "carryover": 8.0,
+                "originality": 8.0,
             },
             "weakest_dimensions": ["hook_strength", "pacing"],
             "rewrite_needed": True,
@@ -250,6 +435,7 @@ DEFAULT_STRUCTURED_OUTPUTS: dict[
                 "pacing": 7.0,
                 "short_drama_feel": 7.5,
                 "carryover": 7.0,
+                "originality": 6.5,
             },
             "weakest_dimensions": ["pacing"],
             "rewrite_needed": False,
@@ -268,6 +454,7 @@ DEFAULT_STRUCTURED_OUTPUTS: dict[
                 "continuity": 8.0,
                 "context_fidelity": 8.0,
                 "rewrite_effectiveness": 7.5,
+                "originality": 5.0,
             },
             "rationale": "结构完整，约束与改写目标均得到保留。",
         }
@@ -284,6 +471,7 @@ DEFAULT_STRUCTURED_OUTPUTS: dict[
                 "continuity": "tie",
                 "context_fidelity": "tie",
                 "rewrite_effectiveness": "tie",
+                "originality": "tie",
             },
             "rationale": "两个 mock 输出质量相同。",
         }
@@ -292,10 +480,10 @@ DEFAULT_STRUCTURED_OUTPUTS: dict[
 
 DEFAULT_TEXT_OUTPUTS: dict[str, str | list[str]] = {
     "draft_generation": [
-        "# 替嫁反击\n\n婚礼大屏亮起时，林晚看见了陆闻舟牵着别人的手。\n\n她没有哭，只当着所有宾客的面，转头看向陆闻舟最大的死对头顾承骁：\"顾总，你还缺新娘吗？\"\n\n顾承骁看了她三秒，抬手替她摘下头纱：\"林小姐，你敢嫁，我就敢让他们今天一起难堪。\"\n"
+        '# 替嫁反击\n\n婚礼大屏亮起时，林晚看见了陆闻舟牵着别人的手。\n\n她没有哭，只当着所有宾客的面，转头看向陆闻舟最大的死对头顾承骁："顾总，你还缺新娘吗？"\n\n顾承骁看了她三秒，抬手替她摘下头纱："林小姐，你敢嫁，我就敢让他们今天一起难堪。"\n'
     ],
     "targeted_rewrite": [
-        "# 替嫁反击\n\n婚礼大屏亮起时，林晚看见了陆闻舟牵着别人的手。\n\n她没有哭，只当着所有宾客的面，转头看向陆闻舟最大的死对头顾承骁：\"顾总，你还缺新娘吗？\"\n\n顾承骁看了她三秒，抬手替她摘下头纱：\"林小姐，你敢嫁，我就敢让他们今天一起难堪。\"\n\n最后一场董事会直播里，顾承骁把陆闻舟转移资产的证据推上屏幕。林晚接过话筒，盯着那张瞬间惨白的脸，慢慢开口：\"你在婚礼上丢掉的，不只是我，是你陆家最后一点体面。\"\n\n直播弹幕刷得满屏都是，陆闻舟想解释，却被股东当场请出了会场。林晚终于把那口气，原封不动地还了回去。\n"
+        '# 替嫁反击\n\n婚礼大屏亮起时，林晚看见了陆闻舟牵着别人的手。\n\n她没有哭，只当着所有宾客的面，转头看向陆闻舟最大的死对头顾承骁："顾总，你还缺新娘吗？"\n\n顾承骁看了她三秒，抬手替她摘下头纱："林小姐，你敢嫁，我就敢让他们今天一起难堪。"\n\n最后一场董事会直播里，顾承骁把陆闻舟转移资产的证据推上屏幕。林晚接过话筒，盯着那张瞬间惨白的脸，慢慢开口："你在婚礼上丢掉的，不只是我，是你陆家最后一点体面。"\n\n直播弹幕刷得满屏都是，陆闻舟想解释，却被股东当场请出了会场。林晚终于把那口气，原封不动地还了回去。\n'
     ],
     "episode_draft_generation": _build_default_episode_drafts(),
     "episode_targeted_rewrite": [
@@ -331,7 +519,9 @@ class MockLLMClient(LLMClient):
             raise LLMInvocationError(f"Missing mock {kind} output for role={role}") from exc
         return payloads.pop(0) if len(payloads) > 1 else payloads[0]
 
-    def generate_structured(self, *, role: str, prompt: str, response_model: type[TModel]) -> TModel:
+    def generate_structured(
+        self, *, role: str, prompt: str, response_model: type[TModel]
+    ) -> TModel:
         payload = self._next_payload(self._structured_outputs, role, "structured")
         if isinstance(payload, str):
             realized = realize_structured_output(
@@ -356,4 +546,6 @@ class MockLLMClient(LLMClient):
 
 
 def build_default_mock_client() -> MockLLMClient:
-    return MockLLMClient(structured_outputs=DEFAULT_STRUCTURED_OUTPUTS, text_outputs=DEFAULT_TEXT_OUTPUTS)
+    return MockLLMClient(
+        structured_outputs=DEFAULT_STRUCTURED_OUTPUTS, text_outputs=DEFAULT_TEXT_OUTPUTS
+    )

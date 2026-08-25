@@ -75,9 +75,14 @@ export function connectRunStream(
   handlers: {
     onMessage: (message: StreamMessage) => void;
     onError: () => void;
+    onOpen?: () => void;
+    afterEventId?: string | null;
   },
 ): EventSource {
-  const source = new EventSource(`/api/runs/${runId}/stream`);
+  const query = handlers.afterEventId
+    ? `?after=${encodeURIComponent(handlers.afterEventId)}`
+    : "";
+  const source = new EventSource(`/api/runs/${runId}/stream${query}`);
   const eventNames = [
     "stage_started",
     "stage_completed",
@@ -99,12 +104,18 @@ export function connectRunStream(
 
   eventNames.forEach((eventName) => {
     source.addEventListener(eventName, (event) => {
+      const messageEvent = event as MessageEvent<string>;
       handlers.onMessage({
+        id: messageEvent.lastEventId || undefined,
         event: eventName,
-        data: JSON.parse((event as MessageEvent<string>).data) as Record<string, unknown>,
+        data: JSON.parse(messageEvent.data) as Record<string, unknown>,
       });
     });
   });
+
+  source.onopen = () => {
+    handlers.onOpen?.();
+  };
 
   source.onerror = () => {
     handlers.onError();

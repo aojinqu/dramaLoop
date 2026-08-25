@@ -4,7 +4,12 @@ from pathlib import Path
 import pytest
 
 from dramaloop.config import Settings
-from dramaloop.harness.episodic_orchestrator import _build_episode_plan_in_chunks, run_episodic_pipeline
+from dramaloop.harness import episodic_orchestrator as episodic_module
+from dramaloop.harness.episodic_orchestrator import (
+    _build_episode_plan_in_chunks,
+    run_episodic_pipeline,
+)
+from dramaloop.llm.base import LLMInvocationError
 from dramaloop.llm.mock import MockLLMClient, build_default_mock_client
 from dramaloop.schemas.input import StoryRequest
 from dramaloop.schemas.season import SeasonBible
@@ -70,6 +75,7 @@ def _episodic_client(
                 "pacing": 7.5,
                 "short_drama_feel": 7.5,
                 "carryover": 8.0,
+                "originality": 6.0,
             },
             "weakest_dimensions": ["pacing"],
             "rewrite_needed": False,
@@ -90,12 +96,89 @@ def test_run_episodic_pipeline_writes_episode_files_and_final_story(tmp_path: Pa
     result = run_episodic_pipeline(_episodic_request(episode_count=1), settings, client)
 
     run_dir = result.run_dir
+    assert not (run_dir / "originality_plan.json").exists()
     assert (run_dir / "season_bible.json").exists()
     assert (run_dir / "episode_plan.json").exists()
     assert (run_dir / "continuity_state.json").exists()
     assert (run_dir / "episodes" / "episode_01.md").exists()
     assert (run_dir / "final_story.md").exists()
     assert "第1集" in (run_dir / "final_story.md").read_text(encoding="utf-8")
+
+
+def test_originality_planner_writes_artifact_before_season_when_enabled(
+    tmp_path: Path,
+) -> None:
+    settings = Settings(
+        runs_dir=tmp_path / "runs",
+        provider="mock",
+        enable_originality_plan=True,
+    )
+
+    result = run_episodic_pipeline(
+        _episodic_request(episode_count=1),
+        settings,
+        build_default_mock_client(),
+    )
+
+    plan = json.loads((result.run_dir / "originality_plan.json").read_text(encoding="utf-8"))
+    events = [
+        json.loads(line)
+        for line in (result.run_dir / "events.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    completed_stages = [event["stage"] for event in events if event["event"] == "completed"]
+
+    assert plan["novelty_mechanism"]["core_engine"]
+    assert completed_stages.index("originality_mechanism_planning") < completed_stages.index(
+        "season_planning"
+    )
+
+
+def test_originality_planner_failure_falls_back_to_main_model(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _FailingPlanner:
+        last_realization_result = None
+
+        def generate_structured(self, **_):
+            raise LLMInvocationError("planner unavailable")
+
+        def generate_text(self, **_):
+            raise AssertionError("text generation is not supported")
+
+        def drain_usage_records(self):
+            return []
+
+    monkeypatch.setattr(
+        episodic_module,
+        "build_originality_planner_client",
+        lambda _settings: _FailingPlanner(),
+    )
+    settings = Settings(
+        runs_dir=tmp_path / "runs",
+        provider="mock",
+        enable_originality_plan=True,
+        originality_planner_base_url="https://planner.example/v1",
+        originality_planner_api_key="test-key",
+    )
+
+    result = run_episodic_pipeline(
+        _episodic_request(episode_count=1),
+        settings,
+        build_default_mock_client(),
+    )
+
+    decisions = [
+        json.loads(line)
+        for line in (result.run_dir / "decision_trace.jsonl")
+        .read_text(encoding="utf-8")
+        .splitlines()
+    ]
+    assert (result.run_dir / "originality_plan.json").exists()
+    assert any(
+        decision.get("action") == "fallback" and "planner unavailable" in decision.get("reason", "")
+        for decision in decisions
+    )
 
 
 def test_run_episodic_pipeline_updates_manifest_episode_progress(tmp_path: Path) -> None:
@@ -124,7 +207,9 @@ def test_build_episode_plan_in_chunks_collects_requested_ranges_from_full_plan()
     assert episodes[-1].title == "公开反杀"
 
 
-def test_run_episodic_pipeline_fails_when_episode_plan_does_not_cover_requested_range(tmp_path: Path) -> None:
+def test_run_episodic_pipeline_fails_when_episode_plan_does_not_cover_requested_range(
+    tmp_path: Path,
+) -> None:
     settings = Settings(runs_dir=tmp_path / "runs", provider="mock")
     client = _episodic_client(
         episode_drafts=[
@@ -162,12 +247,17 @@ def test_run_episodic_pipeline_fails_when_episode_plan_does_not_cover_requested_
     )
 
     result = run_episodic_pipeline(_episodic_request(episode_count=2), settings, client)
-    episode_two = json.loads((result.run_dir / "episodes" / "episode_02.json").read_text(encoding="utf-8"))
+    episode_two = json.loads(
+        (result.run_dir / "episodes" / "episode_02.json").read_text(encoding="utf-8")
+    )
     continuity = json.loads((result.run_dir / "continuity_state.json").read_text(encoding="utf-8"))
     events = (result.run_dir / "events.jsonl").read_text(encoding="utf-8")
 
     assert "顾承骁说他知道偷拍视频是谁放的后" in episode_two["markdown"]
-    assert continuity["last_episode_hook"] == "车门合上前，顾承骁把新的证物袋推到她手里，低声说里面装着偷拍视频原件。"
+    assert (
+        continuity["last_episode_hook"]
+        == "车门合上前，顾承骁把新的证物袋推到她手里，低声说里面装着偷拍视频原件。"
+    )
     assert episode_two["hook_delivered"] == continuity["last_episode_hook"]
     assert "episode=2;attempt=1" in events
     assert "episode=2;attempt=2" in events
@@ -178,7 +268,9 @@ def test_episode_summary_is_richer_than_core_conflict_template(tmp_path: Path) -
     client = build_default_mock_client()
 
     result = run_episodic_pipeline(_episodic_request(episode_count=2), settings, client)
-    episode_one = json.loads((result.run_dir / "episodes" / "episode_01.json").read_text(encoding="utf-8"))
+    episode_one = json.loads(
+        (result.run_dir / "episodes" / "episode_01.json").read_text(encoding="utf-8")
+    )
 
     assert episode_one["episode_summary"] != "第1集：女主必须马上止损反击。"
     assert "《婚礼反击》" in episode_one["episode_summary"]
@@ -218,13 +310,17 @@ def test_requested_final_episode_can_end_cleanly(tmp_path: Path) -> None:
     )
 
     result = run_episodic_pipeline(_episodic_request(episode_count=1), settings, client)
-    episode_one = json.loads((result.run_dir / "episodes" / "episode_01.json").read_text(encoding="utf-8"))
+    episode_one = json.loads(
+        (result.run_dir / "episodes" / "episode_01.json").read_text(encoding="utf-8")
+    )
 
     assert "终局回收" in episode_one["episode_summary"]
     assert "把悬念推向下一集" not in episode_one["episode_summary"]
 
 
-def test_run_episodic_pipeline_writes_critique_and_rewrites_low_score_episode(tmp_path: Path) -> None:
+def test_run_episodic_pipeline_writes_critique_and_rewrites_low_score_episode(
+    tmp_path: Path,
+) -> None:
     settings = Settings(runs_dir=tmp_path / "runs", provider="mock")
     draft = (
         "第1集正文。婚礼大屏亮起时，林晚看见未婚夫牵着旧爱走进来。"
@@ -264,6 +360,7 @@ def test_run_episodic_pipeline_writes_critique_and_rewrites_low_score_episode(tm
                     "pacing": 5.5,
                     "short_drama_feel": 6.0,
                     "carryover": 8.0,
+                    "originality": 5.0,
                 },
                 "weakest_dimensions": ["hook_strength", "pacing"],
                 "rewrite_needed": True,

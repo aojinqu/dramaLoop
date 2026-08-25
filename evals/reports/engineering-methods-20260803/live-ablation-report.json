@@ -1,0 +1,665 @@
+{
+  "case_count": 1,
+  "success_rate": 1.0,
+  "average_final_score": 8.33,
+  "average_completed_episode_ratio": 1.0,
+  "reports": [
+    {
+      "run_id": "20260803-210326-story",
+      "status": "completed",
+      "format": "episodic_series",
+      "completed_episodes": 2,
+      "total_episodes": 2,
+      "success": true,
+      "continuity_failures": 0,
+      "episode_scores": [
+        7.0,
+        7.0
+      ],
+      "average_episode_score": 7.0,
+      "weakest_dimensions": [
+        "pacing",
+        "pacing"
+      ],
+      "overall_scores": [
+        7.0,
+        7.0
+      ],
+      "stage_completion_rate": 1.0,
+      "schema_valid_rate": 1.0,
+      "required_context_recall": 1.0,
+      "memory_recall_rate": 0.0,
+      "memory_compression_ratio": 0.2747,
+      "unsupported_memory_rate": 0.0,
+      "invalid_evidence_ref_count": 0,
+      "skill_trigger_precision": 1.0,
+      "realization_repair_rate": 0.0,
+      "realization_block_rate": 0.0,
+      "rewrite_target_alignment": 1.0,
+      "artifact_completion_rate": 1.0,
+      "context_tokens": 4349,
+      "provider_input_tokens": 6690,
+      "provider_output_tokens": 9813,
+      "provider_cache_read_input_tokens": 0,
+      "provider_call_count": 6,
+      "context_budget_overflow_tokens": 0,
+      "dropped_context_items": 0,
+      "regulation_action_counts": {},
+      "layer_intervention_count": 0,
+      "case_id": "floodgate-shift-live-001",
+      "mode": "baseline",
+      "run_dir": "/tmp/dramaloop-engineering-ablation.h4uD6F/runs/20260803-210326-story",
+      "judge_score": 8.44,
+      "judge_dimensions": {
+        "hook_strength": 9.0,
+        "conflict_intensity": 8.0,
+        "pacing": 8.0,
+        "short_drama_feel": 8.0,
+        "character_consistency": 8.0,
+        "continuity": 9.0,
+        "context_fidelity": 9.0,
+        "rewrite_effectiveness": 8.0,
+        "originality": 9.0
+      },
+      "average_tokens": 4349,
+      "latency_seconds": 113.1406,
+      "expected_contracts": [
+        "carry_unresolved_threads",
+        "required_context_recall",
+        "evidence_backed_memory",
+        "originality_not_template"
+      ],
+      "contract_results": {
+        "carry_unresolved_threads": {
+          "passed": true,
+          "reason": "continuity judge must pass without continuity failures"
+        },
+        "required_context_recall": {
+          "passed": true,
+          "reason": "all required context must be selected"
+        },
+        "evidence_backed_memory": {
+          "passed": true,
+          "reason": "all semantic memory must reference an existing artifact"
+        },
+        "originality_not_template": {
+          "passed": true,
+          "reason": "judge originality must be at least 7"
+        }
+      },
+      "contract_pass_rate": 1.0
+    },
+    {
+      "run_id": "20260803-210544-story",
+      "status": "completed",
+      "format": "episodic_series",
+      "completed_episodes": 2,
+      "total_episodes": 2,
+      "success": true,
+      "continuity_failures": 0,
+      "episode_scores": [
+        7.0,
+        7.5
+      ],
+      "average_episode_score": 7.25,
+      "weakest_dimensions": [
+        "pacing",
+        "pacing"
+      ],
+      "overall_scores": [
+        7.0,
+        7.5
+      ],
+      "stage_completion_rate": 1.0,
+      "schema_valid_rate": 1.0,
+      "required_context_recall": 1.0,
+      "memory_recall_rate": 0.8,
+      "memory_compression_ratio": 0.2868,
+      "unsupported_memory_rate": 0.0,
+      "invalid_evidence_ref_count": 0,
+      "skill_trigger_precision": 1.0,
+      "realization_repair_rate": 0.0,
+      "realization_block_rate": 0.0,
+      "rewrite_target_alignment": 1.0,
+      "artifact_completion_rate": 1.0,
+      "context_tokens": 4724,
+      "provider_input_tokens": 10508,
+      "provider_output_tokens": 6617,
+      "provider_cache_read_input_tokens": 1536,
+      "provider_call_count": 6,
+      "context_budget_overflow_tokens": 0,
+      "dropped_context_items": 0,
+      "regulation_action_counts": {},
+      "layer_intervention_count": 0,
+      "case_id": "floodgate-shift-live-001",
+      "mode": "memory_context_budgeted",
+      "run_dir": "/tmp/dramaloop-engineering-ablation.h4uD6F/runs/20260803-210544-story",
+      "judge_score": 8.11,
+      "judge_dimensions": {
+        "hook_strength": 9.0,
+        "conflict_intensity": 8.0,
+        "pacing": 8.0,
+        "short_drama_feel": 8.0,
+        "character_consistency": 8.0,
+        "continuity": 9.0,
+        "context_fidelity": 8.0,
+        "rewrite_effectiveness": 8.0,
+        "originality": 7.0
+      },
+      "average_tokens": 4724,
+      "latency_seconds": 79.6351,
+      "expected_contracts": [
+        "carry_unresolved_threads",
+        "required_context_recall",
+        "evidence_backed_memory",
+        "originality_not_template"
+      ],
+      "contract_results": {
+        "carry_unresolved_threads": {
+          "passed": true,
+          "reason": "continuity judge must pass without continuity failures"
+        },
+        "required_context_recall": {
+          "passed": true,
+          "reason": "all required context must be selected"
+        },
+        "evidence_backed_memory": {
+          "passed": true,
+          "reason": "all semantic memory must reference an existing artifact"
+        },
+        "originality_not_template": {
+          "passed": true,
+          "reason": "judge originality must be at least 7"
+        }
+      },
+      "contract_pass_rate": 1.0
+    },
+    {
+      "run_id": "20260803-210716-story",
+      "status": "completed",
+      "format": "episodic_series",
+      "completed_episodes": 2,
+      "total_episodes": 2,
+      "success": true,
+      "continuity_failures": 0,
+      "episode_scores": [
+        7.5,
+        7.4
+      ],
+      "average_episode_score": 7.45,
+      "weakest_dimensions": [
+        "pacing",
+        "pacing"
+      ],
+      "overall_scores": [
+        7.5,
+        7.4
+      ],
+      "stage_completion_rate": 1.0,
+      "schema_valid_rate": 1.0,
+      "required_context_recall": 1.0,
+      "memory_recall_rate": 0.8,
+      "memory_compression_ratio": 0.2723,
+      "unsupported_memory_rate": 0.0,
+      "invalid_evidence_ref_count": 0,
+      "skill_trigger_precision": 1.0,
+      "realization_repair_rate": 0.0,
+      "realization_block_rate": 0.0,
+      "rewrite_target_alignment": 1.0,
+      "artifact_completion_rate": 1.0,
+      "context_tokens": 4937,
+      "provider_input_tokens": 10391,
+      "provider_output_tokens": 15570,
+      "provider_cache_read_input_tokens": 2048,
+      "provider_call_count": 6,
+      "context_budget_overflow_tokens": 0,
+      "dropped_context_items": 0,
+      "regulation_action_counts": {},
+      "layer_intervention_count": 0,
+      "case_id": "floodgate-shift-live-001",
+      "mode": "full_harness",
+      "run_dir": "/tmp/dramaloop-engineering-ablation.h4uD6F/runs/20260803-210716-story",
+      "judge_score": 8.44,
+      "judge_dimensions": {
+        "hook_strength": 9.0,
+        "conflict_intensity": 8.0,
+        "pacing": 9.0,
+        "short_drama_feel": 9.0,
+        "character_consistency": 9.0,
+        "continuity": 9.0,
+        "context_fidelity": 9.0,
+        "rewrite_effectiveness": 8.0,
+        "originality": 6.0
+      },
+      "average_tokens": 4937,
+      "latency_seconds": 158.9699,
+      "expected_contracts": [
+        "carry_unresolved_threads",
+        "required_context_recall",
+        "evidence_backed_memory",
+        "originality_not_template"
+      ],
+      "contract_results": {
+        "carry_unresolved_threads": {
+          "passed": true,
+          "reason": "continuity judge must pass without continuity failures"
+        },
+        "required_context_recall": {
+          "passed": true,
+          "reason": "all required context must be selected"
+        },
+        "evidence_backed_memory": {
+          "passed": true,
+          "reason": "all semantic memory must reference an existing artifact"
+        },
+        "originality_not_template": {
+          "passed": false,
+          "reason": "judge originality must be at least 7"
+        }
+      },
+      "contract_pass_rate": 0.75
+    }
+  ],
+  "ablation_runs": [
+    {
+      "run_id": "20260803-210326-story",
+      "status": "completed",
+      "format": "episodic_series",
+      "completed_episodes": 2,
+      "total_episodes": 2,
+      "success": true,
+      "continuity_failures": 0,
+      "episode_scores": [
+        7.0,
+        7.0
+      ],
+      "average_episode_score": 7.0,
+      "weakest_dimensions": [
+        "pacing",
+        "pacing"
+      ],
+      "overall_scores": [
+        7.0,
+        7.0
+      ],
+      "stage_completion_rate": 1.0,
+      "schema_valid_rate": 1.0,
+      "required_context_recall": 1.0,
+      "memory_recall_rate": 0.0,
+      "memory_compression_ratio": 0.2747,
+      "unsupported_memory_rate": 0.0,
+      "invalid_evidence_ref_count": 0,
+      "skill_trigger_precision": 1.0,
+      "realization_repair_rate": 0.0,
+      "realization_block_rate": 0.0,
+      "rewrite_target_alignment": 1.0,
+      "artifact_completion_rate": 1.0,
+      "context_tokens": 4349,
+      "provider_input_tokens": 6690,
+      "provider_output_tokens": 9813,
+      "provider_cache_read_input_tokens": 0,
+      "provider_call_count": 6,
+      "context_budget_overflow_tokens": 0,
+      "dropped_context_items": 0,
+      "regulation_action_counts": {},
+      "layer_intervention_count": 0,
+      "case_id": "floodgate-shift-live-001",
+      "mode": "baseline",
+      "run_dir": "/tmp/dramaloop-engineering-ablation.h4uD6F/runs/20260803-210326-story",
+      "judge_score": 8.44,
+      "judge_dimensions": {
+        "hook_strength": 9.0,
+        "conflict_intensity": 8.0,
+        "pacing": 8.0,
+        "short_drama_feel": 8.0,
+        "character_consistency": 8.0,
+        "continuity": 9.0,
+        "context_fidelity": 9.0,
+        "rewrite_effectiveness": 8.0,
+        "originality": 9.0
+      },
+      "average_tokens": 4349,
+      "latency_seconds": 113.1406,
+      "expected_contracts": [
+        "carry_unresolved_threads",
+        "required_context_recall",
+        "evidence_backed_memory",
+        "originality_not_template"
+      ],
+      "contract_results": {
+        "carry_unresolved_threads": {
+          "passed": true,
+          "reason": "continuity judge must pass without continuity failures"
+        },
+        "required_context_recall": {
+          "passed": true,
+          "reason": "all required context must be selected"
+        },
+        "evidence_backed_memory": {
+          "passed": true,
+          "reason": "all semantic memory must reference an existing artifact"
+        },
+        "originality_not_template": {
+          "passed": true,
+          "reason": "judge originality must be at least 7"
+        }
+      },
+      "contract_pass_rate": 1.0
+    },
+    {
+      "run_id": "20260803-210544-story",
+      "status": "completed",
+      "format": "episodic_series",
+      "completed_episodes": 2,
+      "total_episodes": 2,
+      "success": true,
+      "continuity_failures": 0,
+      "episode_scores": [
+        7.0,
+        7.5
+      ],
+      "average_episode_score": 7.25,
+      "weakest_dimensions": [
+        "pacing",
+        "pacing"
+      ],
+      "overall_scores": [
+        7.0,
+        7.5
+      ],
+      "stage_completion_rate": 1.0,
+      "schema_valid_rate": 1.0,
+      "required_context_recall": 1.0,
+      "memory_recall_rate": 0.8,
+      "memory_compression_ratio": 0.2868,
+      "unsupported_memory_rate": 0.0,
+      "invalid_evidence_ref_count": 0,
+      "skill_trigger_precision": 1.0,
+      "realization_repair_rate": 0.0,
+      "realization_block_rate": 0.0,
+      "rewrite_target_alignment": 1.0,
+      "artifact_completion_rate": 1.0,
+      "context_tokens": 4724,
+      "provider_input_tokens": 10508,
+      "provider_output_tokens": 6617,
+      "provider_cache_read_input_tokens": 1536,
+      "provider_call_count": 6,
+      "context_budget_overflow_tokens": 0,
+      "dropped_context_items": 0,
+      "regulation_action_counts": {},
+      "layer_intervention_count": 0,
+      "case_id": "floodgate-shift-live-001",
+      "mode": "memory_context_budgeted",
+      "run_dir": "/tmp/dramaloop-engineering-ablation.h4uD6F/runs/20260803-210544-story",
+      "judge_score": 8.11,
+      "judge_dimensions": {
+        "hook_strength": 9.0,
+        "conflict_intensity": 8.0,
+        "pacing": 8.0,
+        "short_drama_feel": 8.0,
+        "character_consistency": 8.0,
+        "continuity": 9.0,
+        "context_fidelity": 8.0,
+        "rewrite_effectiveness": 8.0,
+        "originality": 7.0
+      },
+      "average_tokens": 4724,
+      "latency_seconds": 79.6351,
+      "expected_contracts": [
+        "carry_unresolved_threads",
+        "required_context_recall",
+        "evidence_backed_memory",
+        "originality_not_template"
+      ],
+      "contract_results": {
+        "carry_unresolved_threads": {
+          "passed": true,
+          "reason": "continuity judge must pass without continuity failures"
+        },
+        "required_context_recall": {
+          "passed": true,
+          "reason": "all required context must be selected"
+        },
+        "evidence_backed_memory": {
+          "passed": true,
+          "reason": "all semantic memory must reference an existing artifact"
+        },
+        "originality_not_template": {
+          "passed": true,
+          "reason": "judge originality must be at least 7"
+        }
+      },
+      "contract_pass_rate": 1.0
+    },
+    {
+      "run_id": "20260803-210716-story",
+      "status": "completed",
+      "format": "episodic_series",
+      "completed_episodes": 2,
+      "total_episodes": 2,
+      "success": true,
+      "continuity_failures": 0,
+      "episode_scores": [
+        7.5,
+        7.4
+      ],
+      "average_episode_score": 7.45,
+      "weakest_dimensions": [
+        "pacing",
+        "pacing"
+      ],
+      "overall_scores": [
+        7.5,
+        7.4
+      ],
+      "stage_completion_rate": 1.0,
+      "schema_valid_rate": 1.0,
+      "required_context_recall": 1.0,
+      "memory_recall_rate": 0.8,
+      "memory_compression_ratio": 0.2723,
+      "unsupported_memory_rate": 0.0,
+      "invalid_evidence_ref_count": 0,
+      "skill_trigger_precision": 1.0,
+      "realization_repair_rate": 0.0,
+      "realization_block_rate": 0.0,
+      "rewrite_target_alignment": 1.0,
+      "artifact_completion_rate": 1.0,
+      "context_tokens": 4937,
+      "provider_input_tokens": 10391,
+      "provider_output_tokens": 15570,
+      "provider_cache_read_input_tokens": 2048,
+      "provider_call_count": 6,
+      "context_budget_overflow_tokens": 0,
+      "dropped_context_items": 0,
+      "regulation_action_counts": {},
+      "layer_intervention_count": 0,
+      "case_id": "floodgate-shift-live-001",
+      "mode": "full_harness",
+      "run_dir": "/tmp/dramaloop-engineering-ablation.h4uD6F/runs/20260803-210716-story",
+      "judge_score": 8.44,
+      "judge_dimensions": {
+        "hook_strength": 9.0,
+        "conflict_intensity": 8.0,
+        "pacing": 9.0,
+        "short_drama_feel": 9.0,
+        "character_consistency": 9.0,
+        "continuity": 9.0,
+        "context_fidelity": 9.0,
+        "rewrite_effectiveness": 8.0,
+        "originality": 6.0
+      },
+      "average_tokens": 4937,
+      "latency_seconds": 158.9699,
+      "expected_contracts": [
+        "carry_unresolved_threads",
+        "required_context_recall",
+        "evidence_backed_memory",
+        "originality_not_template"
+      ],
+      "contract_results": {
+        "carry_unresolved_threads": {
+          "passed": true,
+          "reason": "continuity judge must pass without continuity failures"
+        },
+        "required_context_recall": {
+          "passed": true,
+          "reason": "all required context must be selected"
+        },
+        "evidence_backed_memory": {
+          "passed": true,
+          "reason": "all semantic memory must reference an existing artifact"
+        },
+        "originality_not_template": {
+          "passed": false,
+          "reason": "judge originality must be at least 7"
+        }
+      },
+      "contract_pass_rate": 0.75
+    }
+  ],
+  "ablation_summary": [
+    {
+      "mode": "baseline",
+      "run_count": 1,
+      "completion_rate": 1.0,
+      "average_judge_score": 8.44,
+      "average_originality_score": 9.0,
+      "contract_pass_rate": 1.0,
+      "continuity_issue_count": 0,
+      "memory_recall_rate": 0.0,
+      "memory_compression_ratio": 0.2747,
+      "unsupported_memory_rate": 0.0,
+      "average_tokens": 4349.0,
+      "average_provider_input_tokens": 6690.0,
+      "average_provider_output_tokens": 9813.0,
+      "provider_total_tokens": 16503.0,
+      "average_latency": 113.1406,
+      "layer_intervention_count": 0,
+      "regulation_action_counts": {}
+    },
+    {
+      "mode": "memory_context_budgeted",
+      "run_count": 1,
+      "completion_rate": 1.0,
+      "average_judge_score": 8.11,
+      "average_originality_score": 7.0,
+      "contract_pass_rate": 1.0,
+      "continuity_issue_count": 0,
+      "memory_recall_rate": 0.8,
+      "memory_compression_ratio": 0.2868,
+      "unsupported_memory_rate": 0.0,
+      "average_tokens": 4724.0,
+      "average_provider_input_tokens": 10508.0,
+      "average_provider_output_tokens": 6617.0,
+      "provider_total_tokens": 17125.0,
+      "average_latency": 79.6351,
+      "layer_intervention_count": 0,
+      "regulation_action_counts": {}
+    },
+    {
+      "mode": "full_harness",
+      "run_count": 1,
+      "completion_rate": 1.0,
+      "average_judge_score": 8.44,
+      "average_originality_score": 6.0,
+      "contract_pass_rate": 0.75,
+      "continuity_issue_count": 0,
+      "memory_recall_rate": 0.8,
+      "memory_compression_ratio": 0.2723,
+      "unsupported_memory_rate": 0.0,
+      "average_tokens": 4937.0,
+      "average_provider_input_tokens": 10391.0,
+      "average_provider_output_tokens": 15570.0,
+      "provider_total_tokens": 25961.0,
+      "average_latency": 158.9699,
+      "layer_intervention_count": 0,
+      "regulation_action_counts": {}
+    }
+  ],
+  "pairwise": [
+    {
+      "case_id": "floodgate-shift-live-001",
+      "mode_a": "baseline",
+      "mode_b": "memory_context_budgeted",
+      "winner": "tie",
+      "dimension_winners": {
+        "pacing": "tie",
+        "context_fidelity": "tie",
+        "short_drama_feel": "tie",
+        "originality": "tie",
+        "rewrite_effectiveness": "tie",
+        "continuity": "B",
+        "conflict_intensity": "tie",
+        "character_consistency": "tie",
+        "hook_strength": "tie"
+      }
+    },
+    {
+      "case_id": "floodgate-shift-live-001",
+      "mode_a": "memory_context_budgeted",
+      "mode_b": "full_harness",
+      "winner": "tie",
+      "dimension_winners": {
+        "pacing": "B",
+        "context_fidelity": "tie",
+        "short_drama_feel": "B",
+        "originality": "tie",
+        "rewrite_effectiveness": "tie",
+        "continuity": "tie",
+        "conflict_intensity": "B",
+        "character_consistency": "tie",
+        "hook_strength": "B"
+      }
+    }
+  ],
+  "pairwise_summary": {
+    "comparison_count": 2,
+    "tie_rate": 1.0,
+    "mode_win_rate": {},
+    "dimension_win_rate": {
+      "conflict_intensity": {
+        "full_harness": 0.5
+      },
+      "continuity": {
+        "memory_context_budgeted": 0.5
+      },
+      "hook_strength": {
+        "full_harness": 0.5
+      },
+      "pacing": {
+        "full_harness": 0.5
+      },
+      "short_drama_feel": {
+        "full_harness": 0.5
+      }
+    }
+  },
+  "failure_mining": {
+    "run_count": 3,
+    "category_counts": {
+      "memory_recall_gap": 1
+    },
+    "patterns": [
+      {
+        "run_id": "20260803-210326-story",
+        "case_id": "floodgate-shift-live-001",
+        "mode": "baseline",
+        "categories": [
+          "memory_recall_gap"
+        ]
+      },
+      {
+        "run_id": "20260803-210544-story",
+        "case_id": "floodgate-shift-live-001",
+        "mode": "memory_context_budgeted",
+        "categories": []
+      },
+      {
+        "run_id": "20260803-210716-story",
+        "case_id": "floodgate-shift-live-001",
+        "mode": "full_harness",
+        "categories": []
+      }
+    ]
+  }
+}

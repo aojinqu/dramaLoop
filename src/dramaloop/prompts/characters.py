@@ -27,8 +27,11 @@ def build_character_prompt(premise: PremiseArtifact) -> str:
                 CHARACTER_JSON_SCHEMA,
                 extra_rules=[
                     "characters 必须是非空数组。",
-                    "role 字段保留英文标识，例如 protagonist、antagonist、ally、supporting。",
+                    "role 字段只能使用 protagonist、antagonist、supporting 三种英文标识。",
                     "hidden_secret 可以是字符串或 null，但该字段必须始终存在。",
+                    "每个主要角色必须有与职业、生活经验或现实利益相关的独特行动逻辑，不能只写冷酷大佬、恶毒亲属、隐忍女主等标签。",
+                    "至少设计一组非恋爱、非血缘的人物关系，并让冲突来自目标或价值观不兼容，而不只是误会。",
+                    "角色的 voice_style 要能在不看姓名时被区分，禁止所有人都使用同一种金句式口吻。",
                 ],
             ),
             f"标题候选：{premise.title_candidate}",

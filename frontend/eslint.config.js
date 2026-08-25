@@ -8,8 +8,10 @@ const browserGlobals = {
   Event: "readonly",
   EventSource: "readonly",
   fetch: "readonly",
+  HTMLUListElement: "readonly",
   MessageEvent: "readonly",
   navigator: "readonly",
+  setTimeout: "readonly",
   window: "readonly",
 };
 

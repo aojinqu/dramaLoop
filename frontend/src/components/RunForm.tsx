@@ -19,7 +19,7 @@ export function RunForm({ onSubmit, disabled = false, error = null }: RunFormPro
   const [style, setStyle] = useState("都市情感");
   const [audience, setAudience] = useState("女性向短剧用户");
   const [constraints, setConstraints] = useState("节奏快, 结尾有回报");
-  const [episodeCount, setEpisodeCount] = useState(6);
+  const [episodeCount, setEpisodeCount] = useState(3);
   const [episodeMinWords, setEpisodeMinWords] = useState(500);
   const [episodeMaxWords, setEpisodeMaxWords] = useState(800);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -63,12 +63,15 @@ export function RunForm({ onSubmit, disabled = false, error = null }: RunFormPro
       }}
     >
       <div className="panel-header">
-        <p className="eyebrow">Launch</p>
-        <h2>生成参数</h2>
+        <div>
+          <p className="eyebrow">Create</p>
+          <h2>新建短剧</h2>
+        </div>
+        <span className="form-step">01</span>
       </div>
 
       <label className="field">
-        <span>故事创意 / Prompt</span>
+        <span>故事创意</span>
         <textarea
           aria-label="Idea"
           name="idea"
@@ -78,6 +81,7 @@ export function RunForm({ onSubmit, disabled = false, error = null }: RunFormPro
           disabled={disabled}
           onChange={(event) => setIdea(event.target.value)}
         />
+        <small>用一句话说明主角、冲突和核心反转。</small>
       </label>
 
       <label className="field">
@@ -92,7 +96,7 @@ export function RunForm({ onSubmit, disabled = false, error = null }: RunFormPro
         />
       </label>
 
-      <div className="field-row">
+      <div className="field-row field-row--primary">
         <label className="field">
           <span>集数</span>
           <input
@@ -106,62 +110,71 @@ export function RunForm({ onSubmit, disabled = false, error = null }: RunFormPro
             onChange={(event) => setEpisodeCount(Number(event.target.value) || 1)}
           />
         </label>
-        <label className="field">
-          <span>最少字数</span>
-          <input
-            aria-label="Episode min words"
-            name="episode_min_words"
-            type="number"
-            min={100}
-            step={50}
-            value={episodeMinWords}
-            disabled={disabled}
-            onChange={(event) => setEpisodeMinWords(Number(event.target.value) || 100)}
-          />
-        </label>
-        <label className="field">
-          <span>最多字数</span>
-          <input
-            aria-label="Episode max words"
-            name="episode_max_words"
-            type="number"
-            min={100}
-            step={50}
-            value={episodeMaxWords}
-            disabled={disabled}
-            onChange={(event) => setEpisodeMaxWords(Number(event.target.value) || 100)}
-          />
-        </label>
+        <div className="field field-static">
+          <span>工作模式</span>
+          <strong>规划后确认</strong>
+        </div>
       </div>
 
-      <label className="field">
-        <span>目标受众</span>
-        <input
-          aria-label="Audience"
-          name="audience"
-          placeholder="女性向短剧用户"
-          value={audience}
-          disabled={disabled}
-          onChange={(event) => setAudience(event.target.value)}
-        />
-      </label>
-
-      <label className="field">
-        <span>约束</span>
-        <input
-          aria-label="Constraints"
-          name="constraints"
-          placeholder="节奏快, 结尾有回报"
-          value={constraints}
-          disabled={disabled}
-          onChange={(event) => setConstraints(event.target.value)}
-        />
-      </label>
+      <details className="advanced-settings">
+        <summary>高级设置</summary>
+        <div className="field-row">
+          <label className="field">
+            <span>最少字数</span>
+            <input
+              aria-label="Episode min words"
+              name="episode_min_words"
+              type="number"
+              min={100}
+              step={50}
+              value={episodeMinWords}
+              disabled={disabled}
+              onChange={(event) => setEpisodeMinWords(Number(event.target.value) || 100)}
+            />
+          </label>
+          <label className="field">
+            <span>最多字数</span>
+            <input
+              aria-label="Episode max words"
+              name="episode_max_words"
+              type="number"
+              min={100}
+              step={50}
+              value={episodeMaxWords}
+              disabled={disabled}
+              onChange={(event) => setEpisodeMaxWords(Number(event.target.value) || 100)}
+            />
+          </label>
+        </div>
+        <label className="field">
+          <span>目标受众</span>
+          <input
+            aria-label="Audience"
+            name="audience"
+            placeholder="女性向短剧用户"
+            value={audience}
+            disabled={disabled}
+            onChange={(event) => setAudience(event.target.value)}
+          />
+        </label>
+        <label className="field">
+          <span>创作约束</span>
+          <input
+            aria-label="Constraints"
+            name="constraints"
+            placeholder="节奏快, 结尾有回报"
+            value={constraints}
+            disabled={disabled}
+            onChange={(event) => setConstraints(event.target.value)}
+          />
+        </label>
+      </details>
 
       {validationError ? <p className="form-error" role="alert">{validationError}</p> : null}
 
-      <button type="submit" disabled={disabled}>
-        {disabled ? "生成中…" : "开始生成"}
+      <button type="submit" className="launch-button" disabled={disabled}>
+        <span>{disabled ? "生成中…" : "开始创作"}</span>
+        <span aria-hidden="true">→</span>
       </button>
     </form>
   );

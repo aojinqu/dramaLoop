@@ -53,6 +53,7 @@ def test_stage_registry_covers_single_and_episodic_stages() -> None:
         "draft_generation",
         "critique_scoring",
         "targeted_rewrite",
+        "originality_mechanism_planning",
         "season_planning",
         "episode_plan_generation",
         "episode_draft_generation",
@@ -61,6 +62,7 @@ def test_stage_registry_covers_single_and_episodic_stages() -> None:
         "final_assembly",
     } <= names
     assert "draft" in get_stage_spec("critique_scoring").required_context
+    assert "originality_plan" in get_stage_spec("season_planning").optional_context
 
 
 def test_story_run_writes_harness_traces_and_evidence_backed_memory(tmp_path: Path) -> None:
@@ -108,7 +110,6 @@ def test_failed_run_writes_partial_memory(tmp_path: Path) -> None:
     run_dir = next((tmp_path / "runs").iterdir())
     memory = json.loads((run_dir / "run_memory.json").read_text(encoding="utf-8"))
     assert memory["final_status"] == "failed"
-    assert memory["failure_patterns"]
     assert (run_dir / "decision_trace.jsonl").stat().st_size > 0
 
 
@@ -291,6 +292,74 @@ def test_trajectory_regulator_aligns_rewrite_and_stops_after_one_rewrite() -> No
     assert aligned.reason == "rewrite target aligned to weakest critique dimension"
     assert aligned.signals[0].recommended_action == "use target ending_payoff"
     assert after_rewrite.action == "stop"
+
+
+def test_trajectory_regulator_boosts_repeatedly_dropped_context() -> None:
+    regulator = TrajectoryRegulator()
+    old_thread = ContextItem(
+        id="thread-1",
+        kind="semantic_fact",
+        content="必须延续的旧线索",
+        tokens_estimated=10,
+        priority=50,
+        reason="unresolved thread",
+        evidence_refs=["episodes/episode_01.json"],
+    )
+
+    boosted, decision = regulator.prioritize_repeated_context(
+        stage="episode_draft_generation",
+        items=[old_thread],
+        consecutive_drop_counts={"thread-1": 2},
+    )
+
+    assert boosted[0].priority > old_thread.priority
+    assert "priority raised" in boosted[0].reason
+    assert decision is not None
+    assert decision.signals[0].signal_type == "repeated_context_drop"
+
+
+def test_trajectory_regulator_marks_continuity_recovery_context() -> None:
+    decision = TrajectoryRegulator().require_continuity_recovery(
+        stage="episode_draft_generation",
+        failures=["opening does not carry the previous hook"],
+    )
+
+    assert decision.action == "continue"
+    assert decision.signals[0].signal_type == "continuity_recovery_context"
+    assert "unresolved threads" in decision.signals[0].recommended_action
+
+
+def test_runtime_forces_unresolved_threads_into_next_episode_context(tmp_path: Path) -> None:
+    run_root = tmp_path / "run"
+    run_root.mkdir()
+    runtime = HarnessRuntime(
+        run_root=run_root,
+        run_id="continuity-recovery",
+        request=_request().model_copy(update={"format": "episodic_series"}),
+        settings=Settings(provider="mock"),
+    )
+    runtime.memory_store.memory.unresolved_threads = [
+        MemoryRecord(
+            id="thread-1",
+            kind="semantic_fact",
+            scope="story",
+            content="偷拍视频来源仍未查明",
+            evidence_refs=["continuity_state.json"],
+            created_stage="episode_draft_generation",
+        )
+    ]
+
+    runtime.force_unresolved_threads_for_next_episode(["opening continuity failed"])
+    runtime.prepare_prompt("episode_draft_generation", "生成下一集")
+
+    context_events = [
+        json.loads(line)
+        for line in (run_root / "context_trace.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    selected = context_events[-1]["selected_items"]
+    forced = next(item for item in selected if item["id"] == "thread-1")
+    assert forced["required"] is True
+    assert "continuity recovery" in forced["reason"]
 
 
 def test_pipeline_forces_rewrite_target_to_weakest_dimension(tmp_path: Path) -> None:

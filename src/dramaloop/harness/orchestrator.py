@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from dramaloop.config import Settings
+from dramaloop.eval.scorer import calculate_overall_score
 from dramaloop.harness.context import PipelineContext
 from dramaloop.harness.loop import determine_stop_reason, should_continue_loop
 from dramaloop.harness.realization import validate_rewrite_coverage
@@ -132,6 +133,9 @@ def run_story_pipeline(
         while True:
             _record_stage_event(run_paths.events_path, "critique_scoring", "started", iteration=current_iteration)
             critique = run_critique_stage(client, context.drafts[-1], context.premise, context.characters, context.outline)
+            critique = critique.model_copy(
+                update={"overall_score": calculate_overall_score(critique)}
+            )
             stop_reason = determine_stop_reason(previous_score, critique, settings, current_iteration, request.max_iterations) or stop_reason
             should_rewrite = should_continue_loop(
                 previous_score,

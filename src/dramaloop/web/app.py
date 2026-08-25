@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Query
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -27,7 +27,7 @@ from dramaloop.web.store import WebRunStore
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="Dramaloop Web Demo")
+    app = FastAPI(title="Dramaloop Studio")
     store = WebRunStore()
 
     @app.get("/health")
@@ -49,13 +49,18 @@ def create_app() -> FastAPI:
         return hydrated
 
     @app.get("/api/runs/{run_id}/stream")
-    async def get_run_stream(run_id: str) -> StreamingResponse:
+    async def get_run_stream(
+        run_id: str,
+        last_event_id: str | None = Header(default=None, alias="Last-Event-ID"),
+        after: str | None = Query(default=None),
+    ) -> StreamingResponse:
         settings = Settings()
         hydrated = hydrate_run_detail(run_id, settings, store)
         if hydrated is None:
             raise HTTPException(status_code=404, detail="run not found")
+        resume_after = last_event_id or after
         return StreamingResponse(
-            stream_run_events(run_id, settings, store),
+            stream_run_events(run_id, settings, store, after_event_id=resume_after),
             media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",

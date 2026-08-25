@@ -17,7 +17,9 @@ def _prompt(story_a: str, story_b: str) -> str:
     return (
         "你是独立短剧评审。比较 A/B 两个输出，判断整体 winner，并按 hook_strength、"
         "conflict_intensity、pacing、short_drama_feel、character_consistency、continuity、"
-        "context_fidelity、rewrite_effectiveness 给出 dimension_winners。"
+        "context_fidelity、rewrite_effectiveness、originality 给出 dimension_winners。"
+        "originality 优先比较冲突机制、场景、人物关系和关键意象是否具体且不可互换，"
+        "对只替换名字的退婚改嫁、豪门打脸、直播翻盘等套式严格判负。"
         "winner 及每个维度只能是 A、B 或 tie。只返回符合 JSON Schema 的 JSON。\n\n"
         f"JSON Schema:\n{PairwiseJudgment.model_json_schema()}\n\n"
         f"A:\n{story_a}\n\nB:\n{story_b}"
